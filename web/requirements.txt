@@ -1,0 +1,5 @@
+flask #framework web
+flask_sqlalchemy #for sql db
+flask_login # login
+pymysql # sql db with python
+python-dotenv #environement
