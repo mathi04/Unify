@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  db:
+    image: mariadb:11
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: unify_db
+      MYSQL_USER: admin_db
+      MYSQL_PASSWORD: unify_admin
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+
+  web:
+    build: ./web
+    restart: always
+    depends_on:
+      - db
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./web/app:/app/app
+
+volumes:
+  db_data:
