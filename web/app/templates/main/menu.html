@@ -2,11 +2,52 @@
 {% block title %}Accueil{% endblock %}
 
 {% block content %}
-<h1>Accueil</h1>
-<p>Bienvenue sur l'app.</p>
+<h1>🏠 Accueil</h1>
+
 {% if current_user.is_authenticated %}
-  <p>Tu es connecté en tant que {{ current_user.username }}.</p>
+<div class="card">
+  <h2>Bienvenue {{ current_user.student.full_name if current_user.student else current_user.professor.full_name if
+    current_user.professor else current_user.username }} !</h2>
+
+  <p style="margin: var(--spacing-md) 0;">
+    {% if current_user.student %}
+    Vous êtes connecté en tant qu'<strong>étudiant</strong> ({{ current_user.student.matricule }})
+    {% elif current_user.professor %}
+    Vous êtes connecté en tant que <strong>professeur</strong> ({{ current_user.professor.department }})
+    {% else %}
+    Vous êtes connecté en tant que {{ current_user.username }}
+    {% endif %}
+  </p>
+
+  <div style="margin-top: var(--spacing-lg);">
+    <h3>🔗 Liens rapides</h3>
+    <ul style="list-style: none; padding: 0;">
+      <li style="margin: var(--spacing-sm) 0;">
+        📚 <a href="{{ url_for('courses.list_courses') }}">Catalogue des cours</a>
+      </li>
+
+      {% if current_user.student %}
+      <li style="margin: var(--spacing-sm) 0;">
+        📋 <a href="{{ url_for('courses.planning') }}">Mon planning</a>
+      </li>
+      <li style="margin: var(--spacing-sm) 0;">
+        📝 <a href="{{ url_for('courses.my_courses') }}">Mes inscriptions</a>
+      </li>
+      {% elif current_user.professor %}
+      <li style="margin: var(--spacing-sm) 0;">
+        👨‍🏫 <a href="{{ url_for('courses.my_courses') }}">Mes cours</a>
+      </li>
+      <li style="margin: var(--spacing-sm) 0;">
+        ➕ <a href="{{ url_for('courses.create_course') }}">Créer un cours</a>
+      </li>
+      {% endif %}
+    </ul>
+  </div>
+</div>
 {% else %}
-  <p>Tu n'es pas connecté.</p>
+<div class="card">
+  <p>Bienvenue sur Unify!</p>
+  <p>Veuillez vous <a href="{{ url_for('auth.login') }}">connecter</a> pour accéder aux cours.</p>
+</div>
 {% endif %}
 {% endblock %}

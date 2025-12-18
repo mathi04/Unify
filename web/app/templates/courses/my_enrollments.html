@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Mes inscriptions{% endblock %}
+
+{% block content %}
+<h1>📝 Mes inscriptions</h1>
+
+<div style="margin-bottom: var(--spacing-md);">
+    <a href="{{ url_for('courses.planning') }}" class="btn">📋 Voir mon planning</a>
+</div>
+
+{% if enrollments %}
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: var(--spacing-md);">
+    {% for enrollment in enrollments %}
+    <div class="card">
+        <h3><a href="{{ url_for('courses.course_detail', course_id=enrollment.course.id) }}">{{ enrollment.course.name
+                }}</a></h3>
+        <p style="color: var(--color-accent); font-weight: 600; margin-bottom: var(--spacing-xs);">{{
+            enrollment.course.code }}</p>
+
+        <div style="margin: var(--spacing-sm) 0;">
+            <span style="padding: 0.25rem 0.5rem; background: 
+            {% if enrollment.status == 'enrolled' %}rgba(74, 222, 128, 0.2); color: #4ade80;
+            {% elif enrollment.status == 'completed' %}rgba(96, 165, 250, 0.2); color: #60a5fa;
+            {% elif enrollment.status == 'dropped' %}rgba(248, 113, 113, 0.2); color: #f87171;
+            {% endif %}
+            border-radius: var(--radius-sm); font-size: var(--font-size-sm); font-weight: 600;">
+                {% if enrollment.status == 'enrolled' %}📝 En cours
+                {% elif enrollment.status == 'completed' %}✅ Complété
+                {% elif enrollment.status == 'dropped' %}❌ Abandonné
+                {% else %}{{ enrollment.status }}
+                {% endif %}
+            </span>
+        </div>
+
+        <div
+            style="margin-top: var(--spacing-md); padding-top: var(--spacing-sm); border-top: 1px solid var(--glass-border);">
+            <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                👤 {{ enrollment.course.professor.full_name }}<br>
+                📅 Inscrit le {{ enrollment.enrollment_date.strftime('%d/%m/%Y') }}<br>
+
+                {% if enrollment.status == 'completed' %}
+                {% if enrollment.student_grade %}
+                📊 Ma note: {{ enrollment.student_grade }}/20<br>
+                {% endif %}
+                {% if enrollment.weekly_hours %}
+                ⏱️ {{ enrollment.weekly_hours }}h/semaine<br>
+                {% endif %}
+                {% endif %}
+
+                {% if enrollment.course.day_of_week %}
+                🕐 {{ enrollment.course.day_of_week }} {{ enrollment.course.start_time }}-{{ enrollment.course.end_time
+                }}
+                {% endif %}
+            </p>
+        </div>
+
+        <div style="margin-top: var(--spacing-md);">
+            <a href="{{ url_for('courses.submit_feedback', course_id=enrollment.course.id) }}" class="btn"
+                style="padding: 0.5rem 1rem; font-size: var(--font-size-sm); margin-right: var(--spacing-xs);">
+                💬 {% if enrollment.status == 'completed' %}Modifier mon avis{% else %}Donner mon avis{% endif %}
+            </a>
+            <a href="{{ url_for('courses.course_detail', course_id=enrollment.course.id) }}" class="btn"
+                style="padding: 0.5rem 1rem; font-size: var(--font-size-sm); background: rgba(255,255,255,0.05);">Voir
+                le cours</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <p>Vous n'êtes inscrit à aucun cours pour le moment.</p>
+    <a href="{{ url_for('courses.list_courses') }}" class="btn">📚 Parcourir les cours</a>
+</div>
+{% endif %}
+{% endblock %}

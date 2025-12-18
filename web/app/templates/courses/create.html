@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Créer un cours{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: var(--spacing-md);">
+    <a href="{{ url_for('courses.list_courses') }}" style="color: var(--color-accent);">← Retour au catalogue</a>
+</div>
+
+<h1>➕ Créer un nouveau cours</h1>
+
+<form method="post">
+    <label>Code du cours *</label>
+    <input type="text" name="code" required placeholder="Ex: CS101" maxlength="20">
+
+    <label>Nom du cours *</label>
+    <input type="text" name="name" required placeholder="Ex: Introduction to Programming" maxlength="200">
+
+    <label>Crédits *</label>
+    <input type="number" name="credits" required min="1" max="12" value="6">
+
+    <label>Description</label>
+    <textarea name="description" rows="5" placeholder="Décrivez le contenu du cours..."></textarea>
+
+    <button type="submit">✓ Créer le cours</button>
+</form>
+{% endblock %}

@@ -1,0 +1,168 @@
+﻿from flask import render_template, redirect, url_for, flash, request
+from flask_login import login_required, current_user
+from datetime import datetime
+
+from . import courses_bp
+from ..extensions import db
+from ..models import Course, Professor, Student, Enrollment
+
+
+@courses_bp.route('/')
+def list_courses():
+    courses = Course.query.all()
+    enrolled_course_ids = []
+    if current_user.is_authenticated and current_user.student:
+        enrolled_course_ids = [e.course_id for e in current_user.student.enrollments if e.status == 'enrolled']
+    return render_template('courses/list.html', courses=courses, enrolled_course_ids=enrolled_course_ids)
+
+
+@courses_bp.route('/<int:course_id>')
+def course_detail(course_id):
+    course = Course.query.get_or_404(course_id)
+    is_enrolled = False
+    if current_user.is_authenticated and current_user.student:
+        is_enrolled = Enrollment.query.filter_by(student_id=current_user.student.id, course_id=course_id).first() is not None
+    return render_template('courses/detail.html', course=course, is_enrolled=is_enrolled)
+
+
+@courses_bp.route('/create', methods=['GET', 'POST'])
+@login_required
+def create_course():
+    if not current_user.professor:
+        flash('Seuls les professeurs peuvent créer des cours', 'error')
+        return redirect(url_for('courses.list_courses'))
+    if request.method == 'POST':
+        try:
+            code = request.form.get('code')
+            name = request.form.get('name')
+            description = request.form.get('description')
+            credits = request.form.get('credits', type=int)
+            if not all([code, name, credits]):
+                flash('Code, nom et crédits sont requis', 'warning')
+                return redirect(url_for('courses.create_course'))
+            if Course.query.filter_by(code=code).first():
+                flash('Un cours avec ce code existe déjà', 'warning')
+                return redirect(url_for('courses.create_course'))
+            course = Course(code=code, name=name, description=description, credits=credits, professor_id=current_user.professor.id)
+            db.session.add(course)
+            db.session.commit()
+            flash(f'Cours {name} créé avec succès!', 'success')
+            return redirect(url_for('courses.course_detail', course_id=course.id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erreur lors de la création: {str(e)}', 'error')
+            return redirect(url_for('courses.create_course'))
+    return render_template('courses/create.html')
+
+
+@courses_bp.route('/<int:course_id>/enroll', methods=['POST'])
+@login_required
+def enroll(course_id):
+    if not current_user.student:
+        flash('Seuls les étudiants peuvent s inscrire aux cours', 'error')
+        return redirect(url_for('courses.course_detail', course_id=course_id))
+    course = Course.query.get_or_404(course_id)
+    existing = Enrollment.query.filter_by(student_id=current_user.student.id, course_id=course_id).first()
+    if existing:
+        flash('Vous êtes déjà inscrit à ce cours', 'warning')
+        return redirect(url_for('courses.course_detail', course_id=course_id))
+    try:
+        enrollment = Enrollment(student_id=current_user.student.id, course_id=course_id)
+        db.session.add(enrollment)
+        db.session.commit()
+        flash(f'Inscription réussie au cours {course.name}!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de l inscription: {str(e)}', 'error')
+    return redirect(url_for('courses.course_detail', course_id=course_id))
+
+
+@courses_bp.route('/<int:course_id>/unenroll', methods=['POST'])
+@login_required
+def unenroll(course_id):
+    if not current_user.student:
+        flash('Action non autorisée', 'error')
+        return redirect(url_for('courses.course_detail', course_id=course_id))
+    enrollment = Enrollment.query.filter_by(student_id=current_user.student.id, course_id=course_id).first()
+    if not enrollment:
+        flash('Vous n êtes pas inscrit à ce cours', 'warning')
+        return redirect(url_for('courses.course_detail', course_id=course_id))
+    try:
+        course_name = enrollment.course.name
+        db.session.delete(enrollment)
+        db.session.commit()
+        flash(f'Désinscription du cours {course_name} réussie', 'info')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de la désinscription: {str(e)}', 'error')
+    return redirect(url_for('courses.list_courses'))
+
+
+@courses_bp.route('/my-courses')
+@login_required
+def my_courses():
+    if current_user.student:
+        enrollments = current_user.student.enrollments
+        return render_template('courses/my_enrollments.html', enrollments=enrollments)
+    elif current_user.professor:
+        courses = current_user.professor.courses
+        return render_template('courses/my_courses.html', courses=courses)
+    else:
+        flash('Profil incomplet', 'warning')
+        return redirect(url_for('main.menu'))
+
+
+@courses_bp.route('/planning')
+@login_required
+def planning():
+    if not current_user.student:
+        flash('Cette page est réservée aux étudiants', 'error')
+        return redirect(url_for('main.menu'))
+    enrollments = Enrollment.query.filter_by(student_id=current_user.student.id, status='enrolled').all()
+    schedule = {}
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    for day in days:
+        schedule[day] = []
+    for enrollment in enrollments:
+        course = enrollment.course
+        if course.day_of_week and course.day_of_week in schedule:
+            schedule[course.day_of_week].append(course)
+    return render_template('courses/planning.html', schedule=schedule, days=days)
+
+
+@courses_bp.route('/<int:course_id>/feedback', methods=['GET', 'POST'])
+@login_required
+def submit_feedback(course_id):
+    if not current_user.student:
+        flash('Seuls les étudiants peuvent soumettre des avis', 'error')
+        return redirect(url_for('courses.course_detail', course_id=course_id))
+    enrollment = Enrollment.query.filter_by(student_id=current_user.student.id, course_id=course_id).first()
+    if not enrollment:
+        flash('Vous devez être inscrit à ce cours', 'warning')
+        return redirect(url_for('courses.course_detail', course_id=course_id))
+    if request.method == 'POST':
+        try:
+            status = request.form.get('status')
+            weekly_hours = request.form.get('weekly_hours', type=int)
+            student_grade = request.form.get('student_grade', type=float)
+            if not status:
+                flash('Veuillez sélectionner un statut', 'warning')
+                return redirect(url_for('courses.submit_feedback', course_id=course_id))
+            enrollment.status = status
+            if status == 'completed':
+                if weekly_hours and student_grade is not None:
+                    enrollment.weekly_hours = min(weekly_hours, 40)
+                    enrollment.student_grade = student_grade
+                    enrollment.completion_date = datetime.utcnow()
+                else:
+                    flash('Veuillez renseigner les heures hebdomadaires et votre note', 'warning')
+                    return redirect(url_for('courses.submit_feedback', course_id=course_id))
+            db.session.commit()
+            flash('Merci pour votre retour!', 'success')
+            return redirect(url_for('courses.my_courses'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erreur: {str(e)}', 'error')
+            return redirect(url_for('courses.submit_feedback', course_id=course_id))
+    course = enrollment.course
+    return render_template('courses/feedback.html', enrollment=enrollment, course=course)

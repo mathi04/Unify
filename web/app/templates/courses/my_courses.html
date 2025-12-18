@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Mes cours{% endblock %}
+
+{% block content %}
+<h1>👨‍🏫 Mes cours</h1>
+
+<div style="margin-bottom: var(--spacing-md);">
+    <a href="{{ url_for('courses.create_course') }}" class="btn">➕ Créer un nouveau cours</a>
+</div>
+
+{% if courses %}
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: var(--spacing-md);">
+    {% for course in courses %}
+    <div class="card">
+        <h3><a href="{{ url_for('courses.course_detail', course_id=course.id) }}">{{ course.name }}</a></h3>
+        <p style="color: var(--color-accent); font-weight: 600; margin-bottom: var(--spacing-xs);">{{ course.code }}</p>
+
+        {% if course.description %}
+        <p style="margin-bottom: var(--spacing-sm);">{{ course.description[:100] }}{% if course.description|length > 100
+            %}...{% endif %}</p>
+        {% endif %}
+
+        <div
+            style="margin-top: var(--spacing-md); padding-top: var(--spacing-sm); border-top: 1px solid var(--glass-border);">
+            <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                🎓 {{ course.credits }} crédits<br>
+                👥 {{ course.enrolled_count }} étudiant(s) inscrit(s)<br>
+                {% if course.day_of_week %}
+                🕐 {{ course.day_of_week }} {{ course.start_time }}-{{ course.end_time }}<br>
+                {% endif %}
+                {% if course.average_hours %}
+                ⭐ Difficulté:
+                {% if course.difficulty_rating == 1 %}⭐ Très facile
+                {% elif course.difficulty_rating == 2 %}⭐⭐ Facile
+                {% elif course.difficulty_rating == 3 %}⭐⭐⭐ Moyen
+                {% elif course.difficulty_rating == 4 %}⭐⭐⭐⭐ Difficile
+                {% elif course.difficulty_rating == 5 %}⭐⭐⭐⭐⭐ Très difficile
+                {% endif %}
+                ({{ course.feedback_count }} avis)
+                {% endif %}
+            </p>
+        </div>
+
+        <div style="margin-top: var(--spacing-md);">
+            <a href="{{ url_for('courses.course_detail', course_id=course.id) }}" class="btn"
+                style="padding: 0.5rem 1rem; font-size: var(--font-size-sm);">Voir les détails</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <p>Vous n'avez pas encore créé de cours.</p>
+    <a href="{{ url_for('courses.create_course') }}" class="btn">➕ Créer mon premier cours</a>
+</div>
+{% endif %}
+{% endblock %}

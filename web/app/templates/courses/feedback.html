@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Feedback - {{ course.name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: var(--spacing-md);">
+    <a href="{{ url_for('courses.course_detail', course_id=course.id) }}" style="color: var(--color-accent);">← Retour
+        au cours</a>
+</div>
+
+<h1>💬 Donner votre avis</h1>
+
+<div class="card">
+    <h2>{{ course.code }} - {{ course.name }}</h2>
+    <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-lg);">
+        Votre retour aide les autres étudiants à mieux comprendre la charge de travail du cours.
+    </p>
+
+    <form method="post">
+        <label>Statut du cours *</label>
+        <select name="status" id="statusSelect" required
+            style="width: 100%; padding: var(--spacing-sm); margin-bottom: var(--spacing-md); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--color-text-primary);">
+            <option value="">-- Sélectionnez --</option>
+            <option value="completed" {% if enrollment.status=='completed' %}selected{% endif %}>✅ Complété</option>
+            <option value="enrolled" {% if enrollment.status=='enrolled' %}selected{% endif %}>📝 En cours</option>
+            <option value="dropped" {% if enrollment.status=='dropped' %}selected{% endif %}>❌ Abandonné</option>
+        </select>
+
+        <div id="completedFields"
+            style="display: {% if enrollment.status == 'completed' %}block{% else %}none{% endif %};">
+            <label>Votre note finale (0-20) *</label>
+            <input type="number" name="student_grade" min="0" max="20" step="0.5" value="{{ enrollment.student_grade }}"
+                placeholder="Ex: 15.5" style="margin-bottom: var(--spacing-md);">
+
+            <label>Heures de travail hebdomadaires (h/semaine) *</label>
+            <input type="number" name="weekly_hours" min="0" max="40" value="{{ enrollment.weekly_hours }}"
+                placeholder="Ex: 10" style="margin-bottom: var(--spacing-md);">
+            <p
+                style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: -0.5rem; margin-bottom: var(--spacing-md);">
+                Incluez les cours, TPs, devoirs et révisions. Maximum 40h/semaine.
+            </p>
+        </div>
+
+        <button type="submit">Soumettre mon avis</button>
+    </form>
+</div>
+
+<script>
+    const statusSelect = document.getElementById('statusSelect');
+    const completedFields = document.getElementById('completedFields');
+    const gradeInput = document.querySelector('input[name="student_grade"]');
+    const hoursInput = document.querySelector('input[name="weekly_hours"]');
+
+    statusSelect.addEventListener('change', function () {
+        if (this.value === 'completed') {
+            completedFields.style.display = 'block';
+            gradeInput.required = true;
+            hoursInput.required = true;
+        } else {
+            completedFields.style.display = 'none';
+            gradeInput.required = false;
+            hoursInput.required = false;
+        }
+    });
+</script>
+{% endblock %}

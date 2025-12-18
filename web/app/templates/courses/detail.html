@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ course.name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: var(--spacing-md);">
+    <a href="{{ url_for('courses.list_courses') }}" style="color: var(--color-accent);">← Retour au catalogue</a>
+</div>
+
+<div class="card">
+    <h1>{{ course.name }}</h1>
+    <p style="color: var(--color-accent); font-weight: 600; font-size: var(--font-size-lg);">{{ course.code }}</p>
+
+    <div
+        style="margin: var(--spacing-lg) 0; padding: var(--spacing-md) 0; border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border);">
+        <p><strong>👤 Professeur:</strong> {{ course.professor.full_name }} ({{ course.professor.department }})</p>
+        <p><strong>🎓 Crédits:</strong> {{ course.credits }}</p>
+        <p><strong>👥 Étudiants inscrits:</strong> {{ course.enrolled_count }}</p>
+        <p><strong>📅 Créé le:</strong> {{ course.created_at.strftime('%d/%m/%Y') }}</p>
+    </div>
+
+    {% if course.description %}
+    <h3>📝 Description</h3>
+    <p>{{ course.description }}</p>
+    {% endif %}
+
+    <!-- Difficulty Statistics -->
+    {% if course.average_hours %}
+    <div
+        style="margin-top: var(--spacing-lg); padding: var(--spacing-md); background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-md); border-left: 3px solid var(--color-accent);">
+        <h3>📊 Statistiques de difficulté</h3>
+        <p style="margin-bottom: var(--spacing-sm);">Basé sur {{ course.feedback_count }} retour(s) d'étudiant(s)</p>
+        <div
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md);">
+            <div>
+                <div style="font-size: var(--font-size-sm); color: var(--color-text-muted);">Difficulté</div>
+                <div style="font-size: var(--font-size-lg); font-weight: 600;">
+                    {% set difficulty = course.difficulty_rating %}
+                    {% if difficulty == 1 %}⭐ Très facile
+                    {% elif difficulty == 2 %}⭐⭐ Facile
+                    {% elif difficulty == 3 %}⭐⭐⭐ Moyen
+                    {% elif difficulty == 4 %}⭐⭐⭐⭐ Difficile
+                    {% elif difficulty == 5 %}⭐⭐⭐⭐⭐ Très difficile
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <div style="font-size: var(--font-size-sm); color: var(--color-text-muted);">Heures / semaine</div>
+                <div style="font-size: var(--font-size-lg); font-weight: 600;">~{{ course.average_hours }}h</div>
+            </div>
+            <div>
+                <div style="font-size: var(--font-size-sm); color: var(--color-text-muted);">Note moyenne</div>
+                <div style="font-size: var(--font-size-lg); font-weight: 600;">{{ course.average_grade }}/20</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if current_user.is_authenticated and current_user.student %}
+    <div style="margin-top: var(--spacing-xl);">
+        {% if is_enrolled %}
+        <form method="post" action="{{ url_for('courses.unenroll', course_id=course.id) }}"
+            style="max-width: 100%; margin: 0;">
+            <p style="color: #4ade80; margin-bottom: var(--spacing-md);">✓ Vous êtes inscrit à ce cours</p>
+            <a href="{{ url_for('courses.submit_feedback', course_id=course.id) }}" class="btn"
+                style="margin-right: var(--spacing-sm); display: inline-block;">💬 Donner mon avis</a>
+            <button type="submit" style="background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);">Se
+                désinscrire</button>
+        </form>
+        {% else %}
+        <form method="post" action="{{ url_for('courses.enroll', course_id=course.id) }}"
+            style="max-width: 100%; margin: 0;">
+            <button type="submit">📝 S'inscrire à ce cours</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if current_user.is_authenticated and current_user.professor and current_user.professor.id == course.professor_id
+    %}
+    <div
+        style="margin-top: var(--spacing-xl); padding-top: var(--spacing-lg); border-top: 1px solid var(--glass-border);">
+        <h3>👥 Étudiants inscrits ({{ course.enrollments|length }})</h3>
+        {% if course.enrollments %}
+        <table style="width: 100%; border-collapse: collapse; margin-top: var(--spacing-md);">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--glass-border);">
+                    <th style="text-align: left; padding: var(--spacing-sm);">Matricule</th>
+                    <th style="text-align: left; padding: var(--spacing-sm);">Nom</th>
+                    <th style="text-align: left; padding: var(--spacing-sm);">Date d'inscription</th>
+                    <th style="text-align: left; padding: var(--spacing-sm);">Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for enrollment in course.enrollments %}
+                <tr style="border-bottom: 1px solid var(--glass-border);">
+                    <td style="padding: var(--spacing-sm);">{{ enrollment.student.matricule }}</td>
+                    <td style="padding: var(--spacing-sm);">{{ enrollment.student.full_name }}</td>
+                    <td style="padding: var(--spacing-sm);">{{ enrollment.enrollment_date.strftime('%d/%m/%Y') }}</td>
+                    <td style="padding: var(--spacing-sm);">{{ enrollment.grade if enrollment.grade else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>Aucun étudiant inscrit pour le moment.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

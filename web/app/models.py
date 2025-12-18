@@ -1,11 +1,160 @@
 from .extensions import db
 from flask_login import UserMixin
+from datetime import datetime
 
-class User(db.Model, UserMixin): #user_table_description
+class User(db.Model, UserMixin):
+    """Base user model for authentication"""
+    __tablename__ = 'user'
+    
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    student = db.relationship('Student', backref='user', uselist=False, cascade='all, delete-orphan')
+    professor = db.relationship('Professor', backref='user', uselist=False, cascade='all, delete-orphan')
+    
+    @property
+    def role(self):
+        """Determine user role based on relationships"""
+        if self.student:
+            return 'student'
+        elif self.professor:
+            return 'professor'
+        return 'user'
+    
+    def __repr__(self):
+        return f'<User {self.username}>'
 
-    def __repr__(self): 
-        return f"<User {self.username}>"
+
+class Student(db.Model):
+    """Student profile extending User"""
+    __tablename__ = 'student'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    first_name = db.Column(db.String(100), nullable=False)
+    last_name = db.Column(db.String(100), nullable=False)
+    matricule = db.Column(db.String(50), unique=True, nullable=False)
+    
+    # Relationships
+    enrollments = db.relationship('Enrollment', backref='student', lazy=True, cascade='all, delete-orphan')
+    
+    @property
+    def full_name(self):
+        return f'{self.first_name} {self.last_name}'
+    
+    def __repr__(self):
+        return f'<Student {self.matricule} - {self.full_name}>'
+
+
+class Professor(db.Model):
+    """Professor profile extending User"""
+    __tablename__ = 'professor'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    first_name = db.Column(db.String(100), nullable=False)
+    last_name = db.Column(db.String(100), nullable=False)
+    department = db.Column(db.String(100), nullable=False)
+    
+    # Relationships
+    courses = db.relationship('Course', backref='professor', lazy=True, cascade='all, delete-orphan')
+    
+    @property
+    def full_name(self):
+        return f'{self.first_name} {self.last_name}'
+    
+    def __repr__(self):
+        return f'<Professor {self.full_name} - {self.department}>'
+
+
+class Course(db.Model):
+    """Course model"""
+    __tablename__ = 'course'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), unique=True, nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    credits = db.Column(db.Integer, nullable=False, default=3)
+    professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Schedule information
+    day_of_week = db.Column(db.String(20))  # e.g., "Monday", "Tuesday"
+    start_time = db.Column(db.String(10))  # e.g., "10:00"
+    end_time = db.Column(db.String(10))  # e.g., "12:00"
+    semester = db.Column(db.String(20))  # e.g., "Fall 2025"
+    
+    # Relationships
+    enrollments = db.relationship('Enrollment', backref='course', lazy=True, cascade='all, delete-orphan')
+    
+    @property
+    def enrolled_count(self):
+        return len([e for e in self.enrollments if e.status == 'enrolled'])
+    
+    @property
+    def average_hours(self):
+        """Average weekly hours from student feedback"""
+        completed = [e for e in self.enrollments if e.status == 'completed' and e.weekly_hours]
+        return round(sum(e.weekly_hours for e in completed) / len(completed), 1) if completed else None
+    
+    @property
+    def average_grade(self):
+        """Average grade from student feedback"""
+        completed = [e for e in self.enrollments if e.status == 'completed' and e.student_grade is not None]
+        return round(sum(e.student_grade for e in completed) / len(completed), 1) if completed else None
+    
+    @property
+    def difficulty_rating(self):
+        """Difficulty rating based on hours (1-5 scale)"""
+        avg_hours = self.average_hours
+        if not avg_hours:
+            return None
+        # 0-5h = 1, 5-10h = 2, 10-15h = 3, 15-20h = 4, 20+h = 5
+        if avg_hours < 5:
+            return 1
+        elif avg_hours < 10:
+            return 2
+        elif avg_hours < 15:
+            return 3
+        elif avg_hours < 20:
+            return 4
+        else:
+            return 5
+    
+    @property
+    def feedback_count(self):
+        """Number of students who provided feedback"""
+        return len([e for e in self.enrollments if e.status == 'completed'])
+    
+    def __repr__(self):
+        return f'<Course {self.code} - {self.name}>'
+
+
+class Enrollment(db.Model):
+    """Enrollment model - many-to-many relationship between Student and Course"""
+    __tablename__ = 'enrollment'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
+    enrollment_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Status and feedback fields
+    status = db.Column(db.String(20), default='enrolled')  # enrolled, completed, dropped, failed
+    weekly_hours = db.Column(db.Integer, nullable=True)  # Student-reported weekly hours
+    completion_date = db.Column(db.DateTime, nullable=True)  # When course was completed
+    student_grade = db.Column(db.Float, nullable=True)  # Student's self-reported grade (0-20)
+    grade = db.Column(db.Float, nullable=True)  # Professor-assigned grade (0-20 scale)
+    
+    # Ensure a student can only enroll once per course
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'course_id', name='unique_student_course'),
+    )
+    
+    def __repr__(self):
+        return f'<Enrollment Student:{self.student_id} Course:{self.course_id} Status:{self.status}>'
