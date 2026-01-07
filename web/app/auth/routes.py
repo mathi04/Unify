@@ -33,34 +33,29 @@ def login():
 def register():
     if request.method == "POST":
         try:
-            # Get common fields
             username = request.form.get("username")
             email = request.form.get("email")
             password = request.form.get("password")
-            role = request.form.get("role")  # 'student' or 'professor'
+            role = request.form.get("role")
             first_name = request.form.get("first_name")
             last_name = request.form.get("last_name")
             
-            # Validate common fields
             if not all([username, email, password, role, first_name, last_name]):
                 flash("Tous les champs sont requis", "warning")
                 return redirect(url_for("auth.register"))
             
-            # Check if username or email already exists
             if User.query.filter((User.username == username) | (User.email == email)).first():
                 flash("Nom d'utilisateur ou email déjà utilisé", "warning")
                 return redirect(url_for("auth.register"))
             
-            # Create user
             user = User(
                 username=username,
                 email=email,
                 password_hash=generate_password_hash(password)
             )
             db.session.add(user)
-            db.session.flush()  # Get user.id without committing
+            db.session.flush() 
             
-            # Create role-specific profile
             if role == 'student':
                 matricule = request.form.get("matricule")
                 if not matricule:
