@@ -1,6 +1,10 @@
-from .extensions import db
-from werkzeug.security import generate_password_hash
+import click
+import json
 from datetime import datetime
+from werkzeug.security import generate_password_hash
+from .extensions import db
+from .models import User, Professor, Course
+
 
 def register_cli(app):
     @app.cli.command("init-db")
@@ -186,3 +190,164 @@ def register_cli(app):
         print("\nSample credentials:")
         print("  Students: alice/bob (password: password123)")
         print("  Professors: prof_smith/prof_jones (password: password123)")
+    def _hour_to_str(h):
+        if h is None:
+            return None
+        try:
+            return f"{int(h):02d}:00"
+        except (ValueError, TypeError):
+            return None
+
+    def _credits_to_int(c):
+        if c is None:
+            return 0
+        try:
+            return int(round(float(c)))
+        except (ValueError, TypeError):
+            return 0
+
+    def _build_description(course_obj: dict):
+        parts = []
+        if course_obj.get("objective"):
+            parts.append(str(course_obj["objective"]).strip())
+        if course_obj.get("description"):
+            parts.append(str(course_obj["description"]).strip())
+        txt = "\n\n".join([p for p in parts if p])
+        return txt or None
+
+    @app.cli.command("seed-from-json")
+    @click.argument("json_path")
+    @click.option("--password", "default_password", default="ChangeMe123!", show_default=True)
+    def seed_from_json_cmd(json_path, default_password):
+        """Seed Users+Professors puis Courses depuis un courses.json"""
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        raw_courses = data.get("courses", [])
+        if not isinstance(raw_courses, list):
+            raise ValueError("JSON invalide: la clé 'courses' doit être une liste.")
+
+        now = datetime.utcnow()
+
+        # 1) Préparer les profs
+        prof_payload_by_person_id = {}
+        for c in raw_courses:
+            person_id = c.get("personId")
+            if not person_id or not str(person_id).isdigit():
+                continue
+            person_id = int(person_id)
+
+            if person_id not in prof_payload_by_person_id:
+                prof_payload_by_person_id[person_id] = {
+                    "first_name": (c.get("displayFirstName") or "Unknown").strip() or "Unknown",
+                    "last_name": (c.get("displayLastName") or "Unknown").strip() or "Unknown",
+                    "department": (c.get("facultyLabel") or "Unknown").strip() or "Unknown",
+                }
+
+        # Placeholder
+        PLACEHOLDER_PERSON_ID = 0
+        prof_payload_by_person_id.setdefault(PLACEHOLDER_PERSON_ID, {
+            "first_name": "TBD",
+            "last_name": "TBD",
+            "department": "Unknown",
+        })
+
+        # 2) Créer Users + Professors
+        created_users = seen_users = 0
+        created_profs = updated_profs = 0
+        professor_by_person_id = {}
+
+        for person_id, p in prof_payload_by_person_id.items():
+            username = f"prof_{person_id}"
+            email = f"{username}@unige.local"
+
+            user = User.query.filter((User.username == username) | (User.email == email)).first()
+            if user is None:
+                user = User(
+                    username=username,
+                    email=email,
+                    password_hash=generate_password_hash(default_password),
+                    created_at=now,
+                )
+                db.session.add(user)
+                db.session.flush()
+                created_users += 1
+            else:
+                seen_users += 1
+
+            prof = Professor.query.filter_by(user_id=user.id).first()
+            if prof is None:
+                prof = Professor(
+                    user_id=user.id,
+                    first_name=p["first_name"],
+                    last_name=p["last_name"],
+                    department=p["department"],
+                )
+                db.session.add(prof)
+                created_profs += 1
+            else:
+                prof.first_name = p["first_name"]
+                prof.last_name = p["last_name"]
+                prof.department = p["department"]
+                updated_profs += 1
+
+            professor_by_person_id[person_id] = prof
+
+        db.session.commit()
+
+        placeholder_prof = professor_by_person_id[PLACEHOLDER_PERSON_ID]
+
+        # 3) Courses
+        inserted_courses = updated_courses = skipped_courses = 0
+
+        codes = [c.get("code") for c in raw_courses if c.get("code")]
+        existing_courses = Course.query.filter(Course.code.in_(codes)).all()
+        course_by_code = {cc.code: cc for cc in existing_courses}
+
+        for c in raw_courses:
+            code = c.get("code")
+            title = c.get("title")
+            if not code or not title:
+                skipped_courses += 1
+                continue
+
+            person_id = c.get("personId")
+            if person_id and str(person_id).isdigit():
+                prof = professor_by_person_id.get(int(person_id), placeholder_prof)
+            else:
+                prof = placeholder_prof
+
+            payload = {
+                "code": str(code)[:20],
+                "name": str(title)[:200],
+                "description": _build_description(c),
+                "credits": _credits_to_int(c.get("credits")),
+                "professor_id": prof.id,
+                "created_at": now,
+                "day_of_week": c.get("day"),
+                "start_time": _hour_to_str(c.get("startHour")),
+                "end_time": _hour_to_str(c.get("endHour")),
+                "semester": c.get("periodicity"),
+            }
+
+            obj = course_by_code.get(payload["code"])
+            if obj is None:
+                db.session.add(Course(**payload))
+                inserted_courses += 1
+            else:
+                for k, v in payload.items():
+                    setattr(obj, k, v)
+                updated_courses += 1
+
+        db.session.commit()
+
+        click.echo({
+            "users_created": created_users,
+            "users_seen": seen_users,
+            "professors_created": created_profs,
+            "professors_updated": updated_profs,
+            "courses_inserted": inserted_courses,
+            "courses_updated": updated_courses,
+            "courses_skipped": skipped_courses,
+            "default_password": default_password,
+        })
