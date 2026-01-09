@@ -87,7 +87,8 @@ class Course(db.Model):
     day_of_week = db.Column(db.String(20))  # e.g., "Monday", "Tuesday"
     start_time = db.Column(db.String(10))  # e.g., "10:00"
     end_time = db.Column(db.String(10))  # e.g., "12:00"
-    semester = db.Column(db.String(20))  # e.g., "Fall 2025"
+    semester = db.Column(db.String(20))  # e.g., "Fall"
+    academical_year = db.Column(db.String(10)) # e.g., "2022"
     
     # Relationships
     enrollments = db.relationship('Enrollment', backref='course', lazy=True, cascade='all, delete-orphan')

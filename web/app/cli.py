@@ -307,7 +307,8 @@ def register_cli(app):
         for c in raw_courses:
             code = c.get("code")
             title = c.get("title")
-            if not code or not title:
+            year = c.get("academicalYear")
+            if not code or not title or not year:
                 skipped_courses += 1
                 continue
 
@@ -328,6 +329,7 @@ def register_cli(app):
                 "start_time": _hour_to_str(c.get("startHour")),
                 "end_time": _hour_to_str(c.get("endHour")),
                 "semester": c.get("periodicity"),
+                "academical_year": str(year)[:10],
             }
 
             obj = course_by_code.get(payload["code"])
