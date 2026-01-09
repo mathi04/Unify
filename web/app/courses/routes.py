@@ -120,7 +120,7 @@ def planning():
         return redirect(url_for('main.menu'))
     enrollments = Enrollment.query.filter_by(student_id=current_user.student.id, status='enrolled').all()
     schedule = {}
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
     for day in days:
         schedule[day] = []
     for enrollment in enrollments:
