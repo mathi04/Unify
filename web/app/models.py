@@ -1,6 +1,8 @@
 from .extensions import db
 from flask_login import UserMixin
 from datetime import datetime
+from sqlalchemy import Numeric
+
 
 class User(db.Model, UserMixin):
     """Base user model for authentication"""
@@ -71,6 +73,36 @@ class Professor(db.Model):
         return f'<Professor {self.full_name} - {self.department}>'
 
 
+class Faculty(db.Model):
+    __tablename__ = "faculty"
+    id = db.Column(db.Integer, primary_key=True)
+    external_id = db.Column(db.String(20), unique=True, nullable=False)  # ex: "23"
+    name = db.Column(db.String(200), nullable=False)
+
+    courses = db.relationship("Course", backref="faculty", lazy=True)
+
+
+
+class StudyPlan(db.Model):
+    __tablename__ = "study_plan"
+    id = db.Column(db.Integer, primary_key=True)
+    external_id = db.Column(db.String(50), unique=True, nullable=True)
+    label = db.Column(db.String(255), nullable=False)
+    courses = db.relationship("CourseStudyPlan", back_populates="study_plan", cascade="all, delete-orphan")
+
+
+class CourseStudyPlan(db.Model):
+    __tablename__ = "course_study_plan"
+    course_id = db.Column(db.Integer, db.ForeignKey("course.id"), primary_key=True)
+    study_plan_id = db.Column(db.Integer, db.ForeignKey("study_plan.id"), primary_key=True)
+
+    # Course Credits in this Study Plan
+    plan_credits = db.Column(Numeric(4, 1), nullable=True)
+
+    course = db.relationship("Course", back_populates="study_plans")
+    study_plan = db.relationship("StudyPlan", back_populates="courses")
+
+
 class Course(db.Model):
     """Course model"""
     __tablename__ = 'course'
@@ -92,6 +124,10 @@ class Course(db.Model):
     
     # Relationships
     enrollments = db.relationship('Enrollment', backref='course', lazy=True, cascade='all, delete-orphan')
+    
+    # Study Plan informations
+    faculty_id = db.Column(db.Integer, db.ForeignKey("faculty.id"), nullable=True)
+    study_plans = db.relationship("CourseStudyPlan", back_populates="course", cascade="all, delete-orphan")
     
     @property
     def enrolled_count(self):

@@ -1,19 +1,68 @@
 ﻿from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
+from sqlalchemy import or_
 from datetime import datetime
 
 from . import courses_bp
 from ..extensions import db
-from ..models import Course, Professor, Student, Enrollment
+from ..models import Course, Faculty, StudyPlan, CourseStudyPlan, Professor, Student, Enrollment
 
 
 @courses_bp.route('/')
-def list_courses():
-    courses = Course.query.all()
-    enrolled_course_ids = []
-    if current_user.is_authenticated and current_user.student:
-        enrolled_course_ids = [e.course_id for e in current_user.student.enrollments if e.status == 'enrolled']
-    return render_template('courses/list.html', courses=courses, enrolled_course_ids=enrolled_course_ids)
+def catalog():
+    q = (request.args.get("q") or "").strip()
+    faculty_ext = (request.args.get("faculty") or "").strip()  # ex: "23"
+    plan_ext = (request.args.get("plan") or "").strip()        # ex: studyPlanGroupId
+    plan_id = request.args.get("plan_id", type=int)            # option alternative
+    sort = (request.args.get("sort") or "code").strip()
+    page = request.args.get("page", 1, type=int)
+    per_page = 25
+
+    query = Course.query
+
+    # Filtre faculté (par external_id)
+    if faculty_ext:
+        query = query.join(Faculty).filter(Faculty.external_id == faculty_ext)
+
+    # Filtre plan d’étude
+    if plan_id:
+        query = query.join(CourseStudyPlan).filter(CourseStudyPlan.study_plan_id == plan_id)
+    elif plan_ext:
+        query = query.join(CourseStudyPlan).join(StudyPlan).filter(StudyPlan.external_id == plan_ext)
+
+    # Recherche code/nom
+    if q:
+        like = f"%{q}%"
+        query = query.filter(or_(Course.code.ilike(like), Course.name.ilike(like)))
+
+    # Tri
+    if sort == "name":
+        query = query.order_by(Course.name.asc())
+    elif sort == "credits":
+        query = query.order_by(Course.credits.desc(), Course.code.asc())
+    else:
+        query = query.order_by(Course.code.asc())
+
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    # pour remplir les dropdowns
+    faculties = Faculty.query.order_by(Faculty.name.asc()).all()
+    plans = StudyPlan.query.order_by(StudyPlan.label.asc()).all()
+
+    return render_template(
+        "courses/catalog.html",
+        courses=pagination.items,
+        pagination=pagination,
+        faculties=faculties,
+        plans=plans,
+        filters={
+            "q": q,
+            "faculty": faculty_ext,
+            "plan": plan_ext,
+            "plan_id": plan_id,
+            "sort": sort,
+        }
+    )
 
 
 @courses_bp.route('/<int:course_id>')

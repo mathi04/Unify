@@ -1,9 +1,10 @@
 import click
 import json
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from werkzeug.security import generate_password_hash
 from .extensions import db
-from .models import User, Professor, Course
+from .models import User, Professor, Course, Faculty, StudyPlan, CourseStudyPlan
 
 
 def register_cli(app):
@@ -190,6 +191,23 @@ def register_cli(app):
         print("\nSample credentials:")
         print("  Students: alice/bob (password: password123)")
         print("  Professors: prof_smith/prof_jones (password: password123)")
+    
+    DAY_MAP = {
+        "Lundi": "Monday",
+        "Mardi": "Tuesday",
+        "Mercredi": "Wednesday",
+        "Jeudi": "Thursday",
+        "Vendredi": "Friday",
+        "Samedi": "Saturday",
+        "Dimanche": "Sunday",
+    }
+
+    SEMESTER_MAP = {
+        "Automne": "Fall",
+        "Printemps": "Spring",
+        "Annuel": "Annual",
+    }
+
     def _hour_to_str(h):
         if h is None:
             return None
@@ -199,6 +217,7 @@ def register_cli(app):
             return None
 
     def _credits_to_int(c):
+        # Course.credits est int dans ta DB ; JSON est float.
         if c is None:
             return 0
         try:
@@ -206,59 +225,97 @@ def register_cli(app):
         except (ValueError, TypeError):
             return 0
 
-    def _build_description(course_obj: dict):
+    def _plan_credits_decimal(x):
+        # listStudyPlan[].planCredits est string/null dans ton JSON
+        if x is None:
+            return None
+        s = str(x).strip()
+        if not s:
+            return None
+        try:
+            return Decimal(s)
+        except (InvalidOperation, ValueError):
+            return None
+
+    def _build_description(obj: dict):
         parts = []
-        if course_obj.get("objective"):
-            parts.append(str(course_obj["objective"]).strip())
-        if course_obj.get("description"):
-            parts.append(str(course_obj["description"]).strip())
+        if obj.get("objective"):
+            parts.append(str(obj["objective"]).strip())
+        if obj.get("description"):
+            parts.append(str(obj["description"]).strip())
         txt = "\n\n".join([p for p in parts if p])
         return txt or None
+
+    def _normalize_day(day):
+        if not day:
+            return None
+        day = str(day).strip()
+        return DAY_MAP.get(day, day)  # si déjà "Monday" on laisse
+
+    def _normalize_semester(periodicity):
+        if not periodicity:
+            return None
+        p = str(periodicity).strip()
+        return SEMESTER_MAP.get(p, p)
 
     @app.cli.command("seed-from-json")
     @click.argument("json_path")
     @click.option("--password", "default_password", default="ChangeMe123!", show_default=True)
-    def seed_from_json_cmd(json_path, default_password):
-        """Seed Users+Professors puis Courses depuis un courses.json"""
+    @click.option("--wipe", is_flag=True, help="Supprime courses + liens + study plans + faculties + profs seed (dangereux).")
+    def seed_from_json_cmd(json_path, default_password, wipe):
+        """
+        Seed complet depuis courses.json:
+        - Users+Professors (créés à partir de personId)
+        - Faculties (facultyId/Label)
+        - StudyPlans (listStudyPlan)
+        - Courses
+        - CourseStudyPlan avec plan_credits
+        """
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         raw_courses = data.get("courses", [])
         if not isinstance(raw_courses, list):
-            raise ValueError("JSON invalide: la clé 'courses' doit être une liste.")
+            raise click.ClickException("JSON invalide: 'courses' doit être une liste.")
 
         now = datetime.utcnow()
 
-        # 1) Préparer les profs
-        prof_payload_by_person_id = {}
+
+        if wipe:
+            click.echo("Wiping tables: course_study_plan, course, study_plan, faculty, professor, user(profs only)...")
+            CourseStudyPlan.query.delete()
+            Course.query.delete()
+            StudyPlan.query.delete()
+            Faculty.query.delete()
+            professors = Professor.query.all()
+            prof_user_ids = [p.user_id for p in professors]
+            Professor.query.delete()
+            if prof_user_ids:
+                User.query.filter(User.id.in_(prof_user_ids)).delete(synchronize_session=False)
+            db.session.commit()
+
+
+        prof_payload = {}
         for c in raw_courses:
-            person_id = c.get("personId")
-            if not person_id or not str(person_id).isdigit():
-                continue
-            person_id = int(person_id)
+            pid = c.get("personId")
+            if pid and str(pid).isdigit():
+                pid = int(pid)
+                if pid not in prof_payload:
+                    prof_payload[pid] = {
+                        "first_name": (c.get("displayFirstName") or "Unknown").strip() or "Unknown",
+                        "last_name": (c.get("displayLastName") or "Unknown").strip() or "Unknown",
+                        "department": (c.get("facultyLabel") or "Unknown").strip() or "Unknown",
+                    }
 
-            if person_id not in prof_payload_by_person_id:
-                prof_payload_by_person_id[person_id] = {
-                    "first_name": (c.get("displayFirstName") or "Unknown").strip() or "Unknown",
-                    "last_name": (c.get("displayLastName") or "Unknown").strip() or "Unknown",
-                    "department": (c.get("facultyLabel") or "Unknown").strip() or "Unknown",
-                }
+  
+        PLACEHOLDER_PID = 0
+        prof_payload.setdefault(PLACEHOLDER_PID, {"first_name": "TBD", "last_name": "TBD", "department": "Unknown"})
 
-        # Placeholder
-        PLACEHOLDER_PERSON_ID = 0
-        prof_payload_by_person_id.setdefault(PLACEHOLDER_PERSON_ID, {
-            "first_name": "TBD",
-            "last_name": "TBD",
-            "department": "Unknown",
-        })
+        created_users = created_profs = 0
+        professor_by_pid = {}
 
-        # 2) Créer Users + Professors
-        created_users = seen_users = 0
-        created_profs = updated_profs = 0
-        professor_by_person_id = {}
-
-        for person_id, p in prof_payload_by_person_id.items():
-            username = f"prof_{person_id}"
+        for pid, p in prof_payload.items():
+            username = f"prof_{pid}"
             email = f"{username}@unige.local"
 
             user = User.query.filter((User.username == username) | (User.email == email)).first()
@@ -272,8 +329,6 @@ def register_cli(app):
                 db.session.add(user)
                 db.session.flush()
                 created_users += 1
-            else:
-                seen_users += 1
 
             prof = Professor.query.filter_by(user_id=user.id).first()
             if prof is None:
@@ -286,19 +341,23 @@ def register_cli(app):
                 db.session.add(prof)
                 created_profs += 1
             else:
+                # update soft
                 prof.first_name = p["first_name"]
                 prof.last_name = p["last_name"]
                 prof.department = p["department"]
-                updated_profs += 1
 
-            professor_by_person_id[person_id] = prof
+            professor_by_pid[pid] = prof
 
         db.session.commit()
+        placeholder_prof = professor_by_pid[PLACEHOLDER_PID]
 
-        placeholder_prof = professor_by_person_id[PLACEHOLDER_PERSON_ID]
+        faculty_by_external = {f.external_id: f for f in Faculty.query.all()}
 
-        # 3) Courses
-        inserted_courses = updated_courses = skipped_courses = 0
+        studyplan_by_external = {sp.external_id: sp for sp in StudyPlan.query.filter(StudyPlan.external_id.isnot(None)).all()}
+        studyplan_by_label = {sp.label: sp for sp in StudyPlan.query.all()}
+
+        inserted_courses = updated_courses = 0
+        link_inserted = link_updated = 0
 
         codes = [c.get("code") for c in raw_courses if c.get("code")]
         existing_courses = Course.query.filter(Course.code.in_(codes)).all()
@@ -307,49 +366,98 @@ def register_cli(app):
         for c in raw_courses:
             code = c.get("code")
             title = c.get("title")
-            year = c.get("academicalYear")
-            if not code or not title or not year:
-                skipped_courses += 1
+            if not code or not title:
                 continue
 
-            person_id = c.get("personId")
-            if person_id and str(person_id).isdigit():
-                prof = professor_by_person_id.get(int(person_id), placeholder_prof)
+            # Faculty
+            faculty_ext = str(c.get("facultyId") or "").strip()
+            faculty_label = (c.get("facultyLabel") or "").strip()
+            faculty_id = None
+            if faculty_ext and faculty_label:
+                fac = faculty_by_external.get(faculty_ext)
+                if fac is None:
+                    fac = Faculty(external_id=faculty_ext, name=faculty_label)
+                    db.session.add(fac)
+                    db.session.flush()
+                    faculty_by_external[faculty_ext] = fac
+                faculty_id = fac.id
+
+            # Professor
+            pid = c.get("personId")
+            if pid and str(pid).isdigit():
+                prof = professor_by_pid.get(int(pid), placeholder_prof)
             else:
                 prof = placeholder_prof
 
-            payload = {
-                "code": str(code)[:20],
-                "name": str(title)[:200],
-                "description": _build_description(c),
-                "credits": _credits_to_int(c.get("credits")),
-                "professor_id": prof.id,
-                "created_at": now,
-                "day_of_week": c.get("day"),
-                "start_time": _hour_to_str(c.get("startHour")),
-                "end_time": _hour_to_str(c.get("endHour")),
-                "semester": c.get("periodicity"),
-                "academical_year": str(year)[:10],
-            }
+            payload = dict(
+                code=str(code)[:20],
+                name=str(title)[:200],
+                description=_build_description(c),
+                credits=_credits_to_int(c.get("credits")),
+                professor_id=prof.id,
+                created_at=now,
+                day_of_week=_normalize_day(c.get("day")),
+                start_time=_hour_to_str(c.get("startHour")),
+                end_time=_hour_to_str(c.get("endHour")),
+                semester=_normalize_semester(c.get("periodicity")),
+                academical_year=str(c.get("academicalYear") or "").strip() or None,
+                faculty_id=faculty_id,
+            )
 
             obj = course_by_code.get(payload["code"])
             if obj is None:
-                db.session.add(Course(**payload))
+                obj = Course(**payload)
+                db.session.add(obj)
+                db.session.flush()  # obj.id pour liens
+                course_by_code[obj.code] = obj
                 inserted_courses += 1
             else:
                 for k, v in payload.items():
                     setattr(obj, k, v)
+                db.session.flush()
                 updated_courses += 1
+
+            # Associations StudyPlan (listStudyPlan)
+            list_plans = c.get("listStudyPlan") or []
+            for sp in list_plans:
+                ext = sp.get("studyPlanGroupId") or sp.get("studyPlanId")
+                ext = str(ext).strip() if ext is not None else None
+                label = (sp.get("studyPlanLabel") or "Unknown plan").strip()
+
+                study_plan = None
+                if ext:
+                    study_plan = studyplan_by_external.get(ext)
+                if study_plan is None:
+                    study_plan = studyplan_by_label.get(label)
+
+                if study_plan is None:
+                    study_plan = StudyPlan(external_id=ext, label=label)
+                    db.session.add(study_plan)
+                    db.session.flush()
+                    if ext:
+                        studyplan_by_external[ext] = study_plan
+                    studyplan_by_label[label] = study_plan
+
+                assoc = CourseStudyPlan.query.filter_by(course_id=obj.id, study_plan_id=study_plan.id).first()
+                if assoc is None:
+                    assoc = CourseStudyPlan(
+                        course_id=obj.id,
+                        study_plan_id=study_plan.id,
+                        plan_credits=_plan_credits_decimal(sp.get("planCredits")),
+                    )
+                    db.session.add(assoc)
+                    link_inserted += 1
+                else:
+                    assoc.plan_credits = _plan_credits_decimal(sp.get("planCredits"))
+                    link_updated += 1
 
         db.session.commit()
 
         click.echo({
             "users_created": created_users,
-            "users_seen": seen_users,
             "professors_created": created_profs,
-            "professors_updated": updated_profs,
             "courses_inserted": inserted_courses,
             "courses_updated": updated_courses,
-            "courses_skipped": skipped_courses,
-            "default_password": default_password,
+            "course_plan_links_inserted": link_inserted,
+            "course_plan_links_updated": link_updated,
         })
