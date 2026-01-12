@@ -6,7 +6,7 @@
   <div>
     <h1 style="margin-bottom: 4px;">Planning hebdomadaire</h1>
     <div style="opacity:.8; font-size: var(--font-size-sm);">
-      Grille 06:00 → 23:00 · Cours + activités personnelles
+      Grille horaire 06:00 → 23:00 · Cours + activités personnelles
     </div>
   </div>
 
@@ -65,62 +65,36 @@
 
           {# events #}
           {% for item in schedule[day] %}
-            <div style="
-              position:absolute;
-              left: 8px;
-              right: 8px;
-              top: {{ item.top }}px;
-              height: {{ item.height }}px;
-              border-radius: 10px;
-              padding: 8px;
-              background: var(--gradient-accent);
-              box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-              overflow:hidden;
-            ">
-              <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
-                <div style="min-width:0;">
-                  {% if item.kind == "course" %}
-                    <div style="font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                      {{ item.code }}
-                    </div>
-                    <div style="opacity:.95; font-size: var(--font-size-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                      {{ item.title }}
-                    </div>
-                  {% else %}
-                    <div style="font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                      Activité
-                    </div>
-                    <div style="opacity:.95; font-size: var(--font-size-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                      {{ item.title }}
-                    </div>
-                  {% endif %}
-                </div>
+            <a href="#"
+               data-toggle="modal"
+               data-target="#courseModal"
+               data-item-kind="{{ item.kind }}"
+               data-course-id="{{ item.id }}"
+               data-course-title="{{ item.title }}"
+               data-course-start="{{ item.start }}"
+               data-course-end="{{ item.end }}"
+               data-course-professor="{{ item.professor_full_name }}"
+               data-course-description="{{ item.description }}"
+               style="position:absolute; left: 8px; right: 8px; top: {{ item.top }}px; height: {{ item.height }}px; display:block; padding:8px; 
+                      background: var(--gradient-accent); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); 
+                      overflow:hidden; text-decoration:none; color:white;">
 
-                <div style="font-size: var(--font-size-sm); opacity:.95; white-space:nowrap;">
-                  {{ item.start }}–{{ item.end }}
-                </div>
+              <div style="font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                {{ item.title }}
               </div>
-
-              {% if item.kind == "course" %}
-                <div style="margin-top: 6px;">
-                  <a href="{{ url_for('courses.course_detail', course_id=item.id) }}"
-                     style="color: rgba(255,255,255,0.95); text-decoration: underline; font-size: var(--font-size-sm);">
-                    Détails
-                  </a>
-                </div>
-              {% endif %}
-            </div>
+              <div style="opacity:.85; font-size: var(--font-size-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                {{ item.start }} – {{ item.end }}
+              </div>
+            </a>
           {% endfor %}
 
         </div>
       {% endfor %}
     </div>
+    
 
   </div>
 </div>
-
-<div style="margin-top:20px;">
-  <a href="{{ url_for('courses.my_courses') }}" style="color:var(--color-accent);">Retour</a>
-</div>
-
 {% endblock %}
+
+

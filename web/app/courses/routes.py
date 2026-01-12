@@ -162,6 +162,7 @@ def my_courses():
 
 
 def _time_to_minutes(t: str | None):
+    """Convertit l'heure (HH:MM) en minutes depuis 00:00"""
     if not t:
         return None
     try:
@@ -177,24 +178,16 @@ def planning():
         flash('Cette page est réservée aux étudiants', 'error')
         return redirect(url_for('main.menu'))
 
-    # Jours FR + weekend
     days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
-
-    # Si tes cours sont en EN dans la DB, on convertit
-    DAY_EN_TO_FR = {
-        "Monday": "Lundi", "Tuesday": "Mardi", "Wednesday": "Mercredi",
-        "Thursday": "Jeudi", "Friday": "Vendredi", "Saturday": "Samedi", "Sunday": "Dimanche",
-    }
-
     schedule = {d: [] for d in days}
 
-    # Paramètres de grille
+    # Paramètres de la grille
     GRID_START_HOUR = 6
     GRID_END_HOUR = 23
-    PX_PER_HOUR = 64  # hauteur d'une heure (ajuste selon ton rendu)
+    PX_PER_HOUR = 64  # Hauteur d'une heure
     total_height = (GRID_END_HOUR - GRID_START_HOUR) * PX_PER_HOUR
 
-    # 1) Cours (enrollments)
+    # Récupérer les cours de l'étudiant
     enrollments = Enrollment.query.filter_by(
         student_id=current_user.student.id,
         status='enrolled'
@@ -204,37 +197,38 @@ def planning():
         c = e.course
         if not c.day_of_week:
             continue
+        day = c.day_of_week.strip()
 
-        day = DAY_EN_TO_FR.get(c.day_of_week.strip(), c.day_of_week.strip())
         if day not in schedule:
             continue
 
         schedule[day].append({
             "kind": "course",
             "id": c.id,
-            "code": c.code,
             "title": c.name,
             "start": c.start_time,
             "end": c.end_time,
+            "professor_full_name": f"{c.professor.first_name} {c.professor.last_name}",
+            "description": c.description,
         })
 
-    # 2) Activités perso (si tu les as)
+    # Récupérer les activités personnelles
     activities = Activity.query.filter_by(user_id=current_user.id).all()
     for a in activities:
-        day = DAY_EN_TO_FR.get(a.day_of_week.strip(), a.day_of_week.strip())
+        day = a.day_of_week.strip()
+
         if day not in schedule:
             continue
 
         schedule[day].append({
             "kind": "activity",
             "id": a.id,
-            "code": None,
             "title": a.title,
             "start": a.start_time,
             "end": a.end_time,
         })
 
-    # 3) Calcul des positions (top/height)
+    # Calculer la position des événements sur la grille
     min_start = GRID_START_HOUR * 60
     max_end = GRID_END_HOUR * 60
 
@@ -248,7 +242,7 @@ def planning():
             if e <= s:
                 continue
 
-            # clamp à 06:00-23:00
+            # Clamp à 06:00-23:00
             s_clamped = max(s, min_start)
             e_clamped = min(e, max_end)
             if e_clamped <= s_clamped:
@@ -257,7 +251,7 @@ def planning():
             top = ((s_clamped - min_start) / 60) * PX_PER_HOUR
             height = ((e_clamped - s_clamped) / 60) * PX_PER_HOUR
 
-            # minimum visuel
+            # Minimum visuel
             if height < 18:
                 height = 18
 
@@ -266,12 +260,13 @@ def planning():
             item["height"] = round(height, 2)
             positioned.append(item)
 
-        # tri par heure
+        # Tri par heure
         positioned.sort(key=lambda x: x["start"] or "99:99")
         schedule[day] = positioned
 
     hours = list(range(GRID_START_HOUR, GRID_END_HOUR + 1))
 
+    # Passer les données nécessaires à la page
     return render_template(
         'courses/planning.html',
         schedule=schedule,
@@ -284,6 +279,7 @@ def planning():
             "total_height": total_height,
         }
     )
+
 
 
 @courses_bp.route('/<int:course_id>/feedback', methods=['GET', 'POST'])
