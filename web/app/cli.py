@@ -193,13 +193,13 @@ def register_cli(app):
         print("  Professors: prof_smith/prof_jones (password: password123)")
     
     DAY_MAP = {
-        "Lundi": "Monday",
-        "Mardi": "Tuesday",
-        "Mercredi": "Wednesday",
-        "Jeudi": "Thursday",
-        "Vendredi": "Friday",
-        "Samedi": "Saturday",
-        "Dimanche": "Sunday",
+        "Monday": "Lundi",
+        "Tuesday": "Mardi",
+        "Wednesday": "Mercredi",
+        "Thursday": "Jeudi",
+        "Friday": "Vendredi",
+        "Saturday": "Samedi",
+        "Sunday": "Dimanche",
     }
 
     SEMESTER_MAP = {
@@ -250,7 +250,7 @@ def register_cli(app):
         if not day:
             return None
         day = str(day).strip()
-        return DAY_MAP.get(day, day)  # si déjà "Monday" on laisse
+        return DAY_MAP.get(day, day)  
 
     def _normalize_semester(periodicity):
         if not periodicity:

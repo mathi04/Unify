@@ -195,3 +195,28 @@ class Enrollment(db.Model):
     
     def __repr__(self):
         return f'<Enrollment Student:{self.student_id} Course:{self.course_id} Status:{self.status}>'
+
+
+class Activity(db.Model):
+    __tablename__ = "activity"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+
+    title = db.Column(db.String(200), nullable=False)         # ex: "Tennis", "Révisions", "Job"
+    description = db.Column(db.Text, nullable=True)
+
+    day_of_week = db.Column(db.String(20), nullable=False)    # "Monday", ...
+    start_time = db.Column(db.String(10), nullable=False)     # "18:00"
+    end_time = db.Column(db.String(10), nullable=False)       # "19:00"
+
+    semester = db.Column(db.String(20), nullable=True)        # optionnel si tu veux filtrer
+    academical_year = db.Column(db.String(10), nullable=True) # optionnel aussi
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User", backref=db.backref("activities", lazy=True, cascade="all, delete-orphan"))
+
+    def __repr__(self):
+        return f"<Activity {self.title} {self.day_of_week} {self.start_time}-{self.end_time}>"

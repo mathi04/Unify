@@ -5,7 +5,7 @@ from datetime import datetime
 
 from . import courses_bp
 from ..extensions import db
-from ..models import Course, Faculty, StudyPlan, CourseStudyPlan, Professor, Student, Enrollment
+from ..models import Course, Faculty, StudyPlan, CourseStudyPlan, Professor, Student, Enrollment, Activity
 
 
 @courses_bp.route('/')
@@ -167,15 +167,49 @@ def planning():
     if not current_user.student:
         flash('Cette page est réservée aux étudiants', 'error')
         return redirect(url_for('main.menu'))
-    enrollments = Enrollment.query.filter_by(student_id=current_user.student.id, status='enrolled').all()
-    schedule = {}
+
     days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+    schedule = {day: [] for day in days}
+
+    # 1) Cours de l'étudiant
+    enrollments = Enrollment.query.filter_by(
+        student_id=current_user.student.id,
+        status='enrolled'
+    ).all()
+
+    for e in enrollments:
+        c = e.course
+        if c.day_of_week and c.day_of_week in schedule:
+            schedule[c.day_of_week].append({
+                "kind": "course",
+                "id": c.id,
+                "code": c.code,
+                "title": c.name,
+                "start": c.start_time,
+                "end": c.end_time,
+            })
+
+    # 2) Activités perso (liées au User)
+    activities = Activity.query.filter_by(user_id=current_user.id).all()
+
+    for a in activities:
+        if a.day_of_week and a.day_of_week in schedule:
+            schedule[a.day_of_week].append({
+                "kind": "activity",
+                "id": a.id,
+                "code": None,
+                "title": a.title,
+                "start": a.start_time,
+                "end": a.end_time,
+            })
+
+    # Tri par heure de début
+    def _time_key(item):
+        return item["start"] or "99:99"
+
     for day in days:
-        schedule[day] = []
-    for enrollment in enrollments:
-        course = enrollment.course
-        if course.day_of_week and course.day_of_week in schedule:
-            schedule[course.day_of_week].append(course)
+        schedule[day].sort(key=_time_key)
+
     return render_template('courses/planning.html', schedule=schedule, days=days)
 
 
@@ -215,3 +249,28 @@ def submit_feedback(course_id):
             return redirect(url_for('courses.submit_feedback', course_id=course_id))
     course = enrollment.course
     return render_template('courses/feedback.html', enrollment=enrollment, course=course)
+
+
+@courses_bp.route("/activities/new", methods=["GET"])
+@login_required
+def new_activity():
+    return render_template("courses/activity_new.html")
+
+@courses_bp.route("/activities/create", methods=["POST"])
+@login_required
+def create_activity():
+    title = (request.form.get("title") or "").strip()
+    day = (request.form.get("day_of_week") or "").strip()
+    start = (request.form.get("start_time") or "").strip()
+    end = (request.form.get("end_time") or "").strip()
+
+    if not title or not day or not start or not end:
+        flash("Merci de remplir tous les champs.", "error")
+        return redirect(url_for("courses.new_activity"))
+
+    a = Activity(user_id=current_user.id, title=title, day_of_week=day, start_time=start, end_time=end)
+    db.session.add(a)
+    db.session.commit()
+
+    flash("Activité ajoutée !", "success")
+    return redirect(url_for("courses.planning"))

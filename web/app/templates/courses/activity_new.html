@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Nouvelle activité{% endblock %}
+{% block content %}
+<h1>Ajouter une activité</h1>
+
+<div class="card">
+  <form method="post" action="{{ url_for('courses.create_activity') }}">
+    <div style="display:grid; gap:12px;">
+      <div>
+        <label>Titre</label>
+        <input name="title" placeholder="Tennis / Révisions / Travail..." style="width:100%;">
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
+        <div>
+          <label>Jour</label>
+          <select name="day_of_week" style="width:100%;">
+            <option>Lundi</option><option>Mardi</option><option>Mercredi</option>
+            <option>Jeudi</option><option>Vendredi</option><option>Samedi</option><option>Dimanche</option>
+          </select>
+        </div>
+        <div>
+          <label>Début</label>
+          <input name="start_time" type="time" style="width:100%;">
+        </div>
+        <div>
+          <label>Fin</label>
+          <input name="end_time" type="time" style="width:100%;">
+        </div>
+      </div>
+
+      <button class="btn" type="submit">Créer</button>
+    </div>
+  </form>
+</div>
+
+<div style="margin-top: 20px;">
+  <a href="{{ url_for('courses.planning') }}" style="color: var(--color-accent);">Retour au planning</a>
+</div>
+{% endblock %}
