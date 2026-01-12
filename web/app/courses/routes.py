@@ -161,6 +161,15 @@ def my_courses():
         return redirect(url_for('main.menu'))
 
 
+def _time_to_minutes(t: str | None):
+    if not t:
+        return None
+    try:
+        hh, mm = t.strip().split(":")
+        return int(hh) * 60 + int(mm)
+    except Exception:
+        return None
+
 @courses_bp.route('/planning')
 @login_required
 def planning():
@@ -168,10 +177,24 @@ def planning():
         flash('Cette page est réservée aux étudiants', 'error')
         return redirect(url_for('main.menu'))
 
-    days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
-    schedule = {day: [] for day in days}
+    # Jours FR + weekend
+    days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
-    # 1) Cours de l'étudiant
+    # Si tes cours sont en EN dans la DB, on convertit
+    DAY_EN_TO_FR = {
+        "Monday": "Lundi", "Tuesday": "Mardi", "Wednesday": "Mercredi",
+        "Thursday": "Jeudi", "Friday": "Vendredi", "Saturday": "Samedi", "Sunday": "Dimanche",
+    }
+
+    schedule = {d: [] for d in days}
+
+    # Paramètres de grille
+    GRID_START_HOUR = 6
+    GRID_END_HOUR = 23
+    PX_PER_HOUR = 64  # hauteur d'une heure (ajuste selon ton rendu)
+    total_height = (GRID_END_HOUR - GRID_START_HOUR) * PX_PER_HOUR
+
+    # 1) Cours (enrollments)
     enrollments = Enrollment.query.filter_by(
         student_id=current_user.student.id,
         status='enrolled'
@@ -179,38 +202,88 @@ def planning():
 
     for e in enrollments:
         c = e.course
-        if c.day_of_week and c.day_of_week in schedule:
-            schedule[c.day_of_week].append({
-                "kind": "course",
-                "id": c.id,
-                "code": c.code,
-                "title": c.name,
-                "start": c.start_time,
-                "end": c.end_time,
-            })
+        if not c.day_of_week:
+            continue
 
-    # 2) Activités perso (liées au User)
+        day = DAY_EN_TO_FR.get(c.day_of_week.strip(), c.day_of_week.strip())
+        if day not in schedule:
+            continue
+
+        schedule[day].append({
+            "kind": "course",
+            "id": c.id,
+            "code": c.code,
+            "title": c.name,
+            "start": c.start_time,
+            "end": c.end_time,
+        })
+
+    # 2) Activités perso (si tu les as)
     activities = Activity.query.filter_by(user_id=current_user.id).all()
-
     for a in activities:
-        if a.day_of_week and a.day_of_week in schedule:
-            schedule[a.day_of_week].append({
-                "kind": "activity",
-                "id": a.id,
-                "code": None,
-                "title": a.title,
-                "start": a.start_time,
-                "end": a.end_time,
-            })
+        day = DAY_EN_TO_FR.get(a.day_of_week.strip(), a.day_of_week.strip())
+        if day not in schedule:
+            continue
 
-    # Tri par heure de début
-    def _time_key(item):
-        return item["start"] or "99:99"
+        schedule[day].append({
+            "kind": "activity",
+            "id": a.id,
+            "code": None,
+            "title": a.title,
+            "start": a.start_time,
+            "end": a.end_time,
+        })
+
+    # 3) Calcul des positions (top/height)
+    min_start = GRID_START_HOUR * 60
+    max_end = GRID_END_HOUR * 60
 
     for day in days:
-        schedule[day].sort(key=_time_key)
+        positioned = []
+        for item in schedule[day]:
+            s = _time_to_minutes(item["start"])
+            e = _time_to_minutes(item["end"])
+            if s is None or e is None:
+                continue
+            if e <= s:
+                continue
 
-    return render_template('courses/planning.html', schedule=schedule, days=days)
+            # clamp à 06:00-23:00
+            s_clamped = max(s, min_start)
+            e_clamped = min(e, max_end)
+            if e_clamped <= s_clamped:
+                continue
+
+            top = ((s_clamped - min_start) / 60) * PX_PER_HOUR
+            height = ((e_clamped - s_clamped) / 60) * PX_PER_HOUR
+
+            # minimum visuel
+            if height < 18:
+                height = 18
+
+            item = dict(item)
+            item["top"] = round(top, 2)
+            item["height"] = round(height, 2)
+            positioned.append(item)
+
+        # tri par heure
+        positioned.sort(key=lambda x: x["start"] or "99:99")
+        schedule[day] = positioned
+
+    hours = list(range(GRID_START_HOUR, GRID_END_HOUR + 1))
+
+    return render_template(
+        'courses/planning.html',
+        schedule=schedule,
+        days=days,
+        hours=hours,
+        grid={
+            "start_hour": GRID_START_HOUR,
+            "end_hour": GRID_END_HOUR,
+            "px_per_hour": PX_PER_HOUR,
+            "total_height": total_height,
+        }
+    )
 
 
 @courses_bp.route('/<int:course_id>/feedback', methods=['GET', 'POST'])
