@@ -137,14 +137,15 @@ def unenroll(course_id):
         flash('Vous n êtes pas inscrit à ce cours', 'warning')
         return redirect(url_for('courses.course_detail', course_id=course_id))
     try:
+        # Save course name BEFORE deleting enrollment to avoid accessing deleted object
         course_name = enrollment.course.name
         db.session.delete(enrollment)
         db.session.commit()
-        flash(f'Désinscription du cours {course_name} réussie', 'info')
+        flash(f'Désinscription du cours {course_name} réussie', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Erreur lors de la désinscription: {str(e)}', 'error')
-    return redirect(url_for('courses.list_courses'))
+    return redirect(url_for('courses.my_courses'))
 
 
 @courses_bp.route('/my-courses')
@@ -342,4 +343,64 @@ def create_activity():
     db.session.commit()
 
     flash("Activité ajoutée !", "success")
+    return redirect(url_for("courses.planning"))
+
+
+@courses_bp.route("/activities/<int:activity_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_activity(activity_id):
+    activity = Activity.query.get_or_404(activity_id)
+    
+    # Verify ownership
+    if activity.user_id != current_user.id:
+        flash("Action non autorisée", "error")
+        return redirect(url_for("courses.planning"))
+    
+    if request.method == "POST":
+        title = (request.form.get("title") or "").strip()
+        day = (request.form.get("day_of_week") or "").strip()
+        start = (request.form.get("start_time") or "").strip()
+        end = (request.form.get("end_time") or "").strip()
+        description = (request.form.get("description") or "").strip()
+        
+        if not title or not day or not start or not end:
+            flash("Merci de remplir tous les champs obligatoires.", "error")
+            return render_template("courses/activity_edit.html", activity=activity)
+        
+        try:
+            activity.title = title
+            activity.day_of_week = day
+            activity.start_time = start
+            activity.end_time = end
+            activity.description = description if description else None
+            db.session.commit()
+            flash("Activité modifiée avec succès !", "success")
+            return redirect(url_for("courses.planning"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erreur lors de la modification: {str(e)}", "error")
+            return render_template("courses/activity_edit.html", activity=activity)
+    
+    return render_template("courses/activity_edit.html", activity=activity)
+
+
+@courses_bp.route("/activities/<int:activity_id>/delete", methods=["POST"])
+@login_required
+def delete_activity(activity_id):
+    activity = Activity.query.get_or_404(activity_id)
+    
+    # Verify ownership
+    if activity.user_id != current_user.id:
+        flash("Action non autorisée", "error")
+        return redirect(url_for("courses.planning"))
+    
+    try:
+        activity_title = activity.title
+        db.session.delete(activity)
+        db.session.commit()
+        flash(f"Activité '{activity_title}' supprimée avec succès", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erreur lors de la suppression: {str(e)}", "error")
+    
     return redirect(url_for("courses.planning"))

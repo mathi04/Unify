@@ -5,49 +5,280 @@
 <h1>🏠 Accueil</h1>
 
 {% if current_user.is_authenticated %}
-<div class="card">
-  <h2>Bienvenue {{ current_user.student.full_name if current_user.student else current_user.professor.full_name if
-    current_user.professor else current_user.username }} !</h2>
 
-  <p style="margin: var(--spacing-md) 0;">
+<!-- Personalized Greeting -->
+<div style="margin-bottom: var(--spacing-xl);">
+  <h1 style="font-size: clamp(2rem, 4vw, 3rem); margin-bottom: var(--spacing-xs);">
+    Bienvenue {{ current_user.student.full_name if current_user.student else current_user.professor.full_name if
+    current_user.professor else current_user.username }} ! 👋
+  </h1>
+  <p style="font-size: var(--font-size-lg); color: var(--color-text-secondary);">
     {% if current_user.student %}
-    Vous êtes connecté en tant qu'<strong>étudiant</strong> ({{ current_user.student.matricule }})
+    Matricule: <strong>{{ current_user.student.matricule }}</strong>
     {% elif current_user.professor %}
-    Vous êtes connecté en tant que <strong>professeur</strong> ({{ current_user.professor.department }})
-    {% else %}
-    Vous êtes connecté en tant que {{ current_user.username }}
+    Département: <strong>{{ current_user.professor.department }}</strong>
     {% endif %}
   </p>
+</div>
 
-  <div style="margin-top: var(--spacing-lg);">
-    <h3>🔗 Liens rapides</h3>
-    <ul style="list-style: none; padding: 0;">
-      <li style="margin: var(--spacing-sm) 0;">
-        📚 <a href="{{ url_for('courses.catalog') }}">Catalogue des cours</a>
-      </li>
+<!-- Quick Stats Dashboard (Student view) -->
+{% if current_user.student %}
+<div
+  style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-lg); margin-bottom: var(--spacing-xl);">
 
-      {% if current_user.student %}
-      <li style="margin: var(--spacing-sm) 0;">
-        📋 <a href="{{ url_for('courses.planning') }}">Mon planning</a>
-      </li>
-      <li style="margin: var(--spacing-sm) 0;">
-        📝 <a href="{{ url_for('courses.my_courses') }}">Mes inscriptions</a>
-      </li>
-      {% elif current_user.professor %}
-      <li style="margin: var(--spacing-sm) 0;">
-        👨‍🏫 <a href="{{ url_for('courses.my_courses') }}">Mes cours</a>
-      </li>
-      <li style="margin: var(--spacing-sm) 0;">
-        ➕ <a href="{{ url_for('courses.create_course') }}">Créer un cours</a>
-      </li>
-      {% endif %}
-    </ul>
+  <!-- Stat Card: Courses -->
+  <div class="card"
+    style="text-align: center; background: linear-gradient(135deg, rgba(200, 16, 46, 0.1), rgba(255, 77, 109, 0.05)); border: 1px solid rgba(200, 16, 46, 0.3);">
+    <div style="font-size: 3rem;">📚</div>
+    <div style="font-size: 2.5rem; font-weight: 700; color: var(--color-accent); margin: var(--spacing-sm) 0;">
+      {{ current_user.student.enrollments|length if current_user.student.enrollments else 0 }}
+    </div>
+    <div
+      style="color: var(--color-text-secondary); text-transform: uppercase; font-size: var(--font-size-sm); letter-spacing: 1px;">
+      Cours inscrits
+    </div>
+  </div>
+
+  <!-- Stat Card: Planning -->
+  <div class="card" style="text-align: center;">
+    <div style="font-size: 3rem;">📅</div>
+    <div style="font-size: 2.5rem; font-weight: 700; color: var(--color-accent); margin: var(--spacing-sm) 0;">
+      --
+    </div>
+    <div
+      style="color: var(--color-text-secondary); text-transform: uppercase; font-size: var(--font-size-sm); letter-spacing: 1px;">
+      Heures cette semaine
+    </div>
+  </div>
+
+  <!-- Stat Card: Progress -->
+  <div class="card" style="text-align: center;">
+    <div style="font-size: 3rem;">🎯</div>
+    <div style="font-size: 2.5rem; font-weight: 700; color: var(--color-accent); margin: var(--spacing-sm) 0;">
+      {% set completed_credits = current_user.student.enrollments|selectattr('status', 'equalto',
+      'completed')|map(attribute='course.credits')|sum if current_user.student.enrollments else 0 %}
+      {{ completed_credits }}
+    </div>
+    <div
+      style="color: var(--color-text-secondary); text-transform: uppercase; font-size: var(--font-size-sm); letter-spacing: 1px;">
+      Crédits acquis
+    </div>
+  </div>
+
+</div>
+{% endif %}
+
+<!-- Quick Actions -->
+<div>
+  <h2
+    style="font-size: var(--font-size-2xl); margin-bottom: var(--spacing-lg); display: flex; align-items: center; gap: var(--spacing-sm);">
+    🔗 Accès rapide
+  </h2>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--spacing-lg);">
+
+    <!-- Action Card: Catalogue -->
+    <a href="{{ url_for('courses.catalog') }}" class="card"
+      style="text-decoration: none; color: inherit; cursor: pointer; transition: all var(--transition-normal);">
+      <div style="display: flex; align-items: start; gap: var(--spacing-md);">
+        <div style="font-size: 3rem; flex-shrink: 0;">📚</div>
+        <div>
+          <h3 style="color: var(--color-accent); margin-bottom: var(--spacing-xs); font-size: var(--font-size-lg);">
+            Catalogue des cours</h3>
+          <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0; line-height: 1.5;">
+            Explorez notre catalogue complet et découvrez de nouveaux cours
+          </p>
+        </div>
+      </div>
+    </a>
+
+    {% if current_user.student %}
+    <!-- Action Card: Planning -->
+    <a href="{{ url_for('courses.planning') }}" class="card"
+      style="text-decoration: none; color: inherit; cursor: pointer; transition: all var(--transition-normal);">
+      <div style="display: flex; align-items: start; gap: var(--spacing-md);">
+        <div style="font-size: 3rem; flex-shrink: 0;">📅</div>
+        <div>
+          <h3 style="color: var(--color-accent); margin-bottom: var(--spacing-xs); font-size: var(--font-size-lg);">Mon
+            planning</h3>
+          <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0; line-height: 1.5;">
+            Visualisez votre emploi du temps et gérez votre charge de travail
+          </p>
+        </div>
+      </div>
+    </a>
+
+    <!-- Action Card: Events -->
+    <a href="{{ url_for('events.list_events') }}" class="card"
+      style="text-decoration: none; color: inherit; cursor: pointer; transition: all var(--transition-normal);">
+      <div style="display: flex; align-items: start; gap: var(--spacing-md);">
+        <div style="font-size: 3rem; flex-shrink: 0;">🎉</div>
+        <div>
+          <h3 style="color: var(--color-accent); margin-bottom: var(--spacing-xs); font-size: var(--font-size-lg);">
+            Événements</h3>
+          <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0; line-height: 1.5;">
+            Rejoignez ou créez des événements sociaux (sport, révisions, soirées...)
+          </p>
+        </div>
+      </div>
+    </a>
+
+    <!-- Action Card: Inscriptions -->
+    <a href="{{ url_for('courses.my_courses') }}" class="card"
+      style="text-decoration: none; color: inherit; cursor: pointer; transition: all var(--transition-normal);">
+      <div style="display: flex; align-items: start; gap: var(--spacing-md);">
+        <div style="font-size: 3rem; flex-shrink: 0;">📝</div>
+        <div>
+          <h3 style="color: var(--color-accent); margin-bottom: var(--spacing-xs); font-size: var(--font-size-lg);">Mes
+            inscriptions</h3>
+          <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0; line-height: 1.5;">
+            Gérez vos cours et consultez vos inscriptions actives
+          </p>
+        </div>
+      </div>
+    </a>
+    {% elif current_user.professor %}
+    <!-- Action Card: My Courses (Professor) -->
+    <a href="{{ url_for('courses.my_courses') }}" class="card"
+      style="text-decoration: none; color: inherit; cursor: pointer; transition: all var(--transition-normal);">
+      <div style="display: flex; align-items: start; gap: var(--spacing-md);">
+        <div style="font-size: 3rem; flex-shrink: 0;">👨‍🏫</div>
+        <div>
+          <h3 style="color: var(--color-accent); margin-bottom: var(--spacing-xs); font-size: var(--font-size-lg);">Mes
+            cours</h3>
+          <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0; line-height: 1.5;">
+            Gérez les cours que vous enseignez et consultez les inscriptions
+          </p>
+        </div>
+      </div>
+    </a>
+
+    <!-- Action Card: Create Course -->
+    <a href="{{ url_for('courses.create_course') }}" class="card"
+      style="text-decoration: none; color: inherit; cursor: pointer; transition: all var(--transition-normal);">
+      <div style="display: flex; align-items: start; gap: var(--spacing-md);">
+        <div style="font-size: 3rem; flex-shrink: 0;">➕</div>
+        <div>
+          <h3 style="color: var(--color-accent); margin-bottom: var(--spacing-xs); font-size: var(--font-size-lg);">
+            Créer un cours</h3>
+          <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0; line-height: 1.5;">
+            Ajoutez un nouveau cours au catalogue de l'université
+          </p>
+        </div>
+      </div>
+    </a>
+    {% endif %}
+
   </div>
 </div>
+
 {% else %}
-<div class="card">
-  <p>Bienvenue sur Unify!</p>
-  <p>Veuillez vous <a href="{{ url_for('auth.login') }}">connecter</a> pour accéder aux cours.</p>
+
+<!-- Hero Section -->
+<div style="text-align: center; padding: var(--spacing-xl) 0 var(--spacing-lg) 0; max-width: 900px; margin: 0 auto;">
+  <h1
+    style="font-size: clamp(2.5rem, 5vw, 4rem); margin-bottom: var(--spacing-md); line-height: 1.1; background: linear-gradient(135deg, var(--color-primary-light), var(--color-accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+    Bienvenue sur Unify
+  </h1>
+
+  <p
+    style="font-size: var(--font-size-lg); color: var(--color-text-secondary); margin-bottom: var(--spacing-xl); max-width: 700px; margin-left: auto; margin-right: auto;">
+    Votre plateforme centralisée pour gérer vos cours universitaires, planifier votre semestre et optimiser votre
+    parcours académique.
+  </p>
+
+  <!-- CTA Buttons -->
+  <div
+    style="display: flex; gap: var(--spacing-md); justify-content: center; flex-wrap: wrap; margin-bottom: var(--spacing-xl);">
+    <a href="{{ url_for('auth.login') }}" class="btn"
+      style="font-size: var(--font-size-lg); padding: var(--spacing-md) var(--spacing-xl); box-shadow: 0 8px 32px rgba(200, 16, 46, 0.4);">
+      🔐 Se connecter
+    </a>
+    <a href="{{ url_for('auth.register') }}" class="btn"
+      style="font-size: var(--font-size-lg); padding: var(--spacing-md) var(--spacing-xl); background: rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(255,255,255,0.1);">
+      ✨ S'inscrire
+    </a>
+  </div>
 </div>
+
+<!-- Features Section -->
+<div style="margin-top: var(--spacing-xl);">
+  <h2
+    style="text-align: center; font-size: var(--font-size-2xl); margin-bottom: var(--spacing-lg); color: var(--color-text-primary);">
+    Fonctionnalités principales
+  </h2>
+
+  <div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--spacing-lg); margin-top: var(--spacing-lg);">
+
+    <!-- Feature 1: Catalogue -->
+    <div class="card" style="text-align: center; transition: all var(--transition-normal);">
+      <div style="font-size: 4rem; margin-bottom: var(--spacing-md);">📚</div>
+      <h3 style="color: var(--color-accent); margin-bottom: var(--spacing-sm);">Catalogue complet</h3>
+      <p style="color: var(--color-text-secondary); line-height: 1.6;">
+        Explorez des milliers de cours, filtrez par faculté et plan d'étude, et trouvez exactement ce que vous cherchez.
+      </p>
+    </div>
+
+    <!-- Feature 2: Planning -->
+    <div class="card" style="text-align: center; transition: all var(--transition-normal);">
+      <div style="font-size: 4rem; margin-bottom: var(--spacing-md);">📅</div>
+      <h3 style="color: var(--color-accent); margin-bottom: var(--spacing-sm);">Planning intelligent</h3>
+      <p style="color: var(--color-text-secondary); line-height: 1.6;">
+        Visualisez votre emploi du temps, gérez vos inscriptions et optimisez votre charge de travail hebdomadaire.
+      </p>
+    </div>
+
+    <!-- Feature 3: Feedback -->
+    <div class="card" style="text-align: center; transition: all var(--transition-normal);">
+      <div style="font-size: 4rem; margin-bottom: var(--spacing-md);">💬</div>
+      <h3 style="color: var(--color-accent); margin-bottom: var(--spacing-sm);">Retours étudiants</h3>
+      <p style="color: var(--color-text-secondary); line-height: 1.6;">
+        Consultez les avis d'autres étudiants sur la difficulté, la charge de travail et la qualité des cours.
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<!-- Statistics Section -->
+<div class="card"
+  style="margin-top: var(--spacing-xl); background: linear-gradient(135deg, rgba(200, 16, 46, 0.1), rgba(255, 77, 109, 0.05)); border: 1px solid rgba(200, 16, 46, 0.3); text-align: center;">
+  <h3 style="font-size: var(--font-size-xl); margin-bottom: var(--spacing-lg);">Unify en chiffres</h3>
+  <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: var(--spacing-lg);">
+    <div>
+      <div style="font-size: 3rem; font-weight: 700; color: var(--color-accent);">1397</div>
+      <div
+        style="color: var(--color-text-secondary); text-transform: uppercase; font-size: var(--font-size-sm); letter-spacing: 1px;">
+        Cours disponibles</div>
+    </div>
+    <div>
+      <div style="font-size: 3rem; font-weight: 700; color: var(--color-accent);">15+</div>
+      <div
+        style="color: var(--color-text-secondary); text-transform: uppercase; font-size: var(--font-size-sm); letter-spacing: 1px;">
+        Facultés</div>
+    </div>
+    <div>
+      <div style="font-size: 3rem; font-weight: 700; color: var(--color-accent);">100+</div>
+      <div
+        style="color: var(--color-text-secondary); text-transform: uppercase; font-size: var(--font-size-sm); letter-spacing: 1px;">
+        Plans d'étude</div>
+    </div>
+  </div>
+</div>
+
+<!-- Final CTA -->
+<div
+  style="text-align: center; margin-top: var(--spacing-xl); padding: var(--spacing-xl); background: rgba(255,255,255,0.02); border-radius: var(--radius-lg); border: 1px solid var(--glass-border);">
+  <h3 style="font-size: var(--font-size-2xl); margin-bottom: var(--spacing-md);">Prêt à commencer ?</h3>
+  <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-lg); font-size: var(--font-size-lg);">
+    Rejoignez Unify et prenez le contrôle de votre parcours universitaire dès aujourd'hui.
+  </p>
+  <a href="{{ url_for('auth.register') }}" class="btn"
+    style="font-size: var(--font-size-lg); padding: var(--spacing-md) var(--spacing-xl); box-shadow: 0 8px 32px rgba(200, 16, 46, 0.4);">
+    Créer un compte gratuitement →
+  </a>
+</div>
+
 {% endif %}
 {% endblock %}

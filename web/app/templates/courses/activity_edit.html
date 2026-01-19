@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Modifier activité{% endblock %}
+{% block content %}
+<h1>Modifier l'activité</h1>
+
+<div class="card">
+    <form method="post">
+        <div style="display:grid; gap:12px;">
+            <div>
+                <label>Titre</label>
+                <input name="title" value="{{ activity.title }}" placeholder="Tennis / Révisions / Travail..."
+                    style="width:100%;" required>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
+                <div>
+                    <label>Jour</label>
+                    <select name="day_of_week" style="width:100%;" required>
+                        <option {% if activity.day_of_week=='Lundi' %}selected{% endif %}>Lundi</option>
+                        <option {% if activity.day_of_week=='Mardi' %}selected{% endif %}>Mardi</option>
+                        <option {% if activity.day_of_week=='Mercredi' %}selected{% endif %}>Mercredi</option>
+                        <option {% if activity.day_of_week=='Jeudi' %}selected{% endif %}>Jeudi</option>
+                        <option {% if activity.day_of_week=='Vendredi' %}selected{% endif %}>Vendredi</option>
+                        <option {% if activity.day_of_week=='Samedi' %}selected{% endif %}>Samedi</option>
+                        <option {% if activity.day_of_week=='Dimanche' %}selected{% endif %}>Dimanche</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Début</label>
+                    <input name="start_time" type="time" value="{{ activity.start_time }}" style="width:100%;" required>
+                </div>
+                <div>
+                    <label>Fin</label>
+                    <input name="end_time" type="time" value="{{ activity.end_time }}" style="width:100%;" required>
+                </div>
+            </div>
+
+            <div>
+                <label>Description (optionnel)</label>
+                <textarea name="description" rows="3" placeholder="Détails supplémentaires..."
+                    style="width:100%;">{{ activity.description or '' }}</textarea>
+            </div>
+
+            <div style="display: flex; gap: var(--spacing-sm);">
+                <button class="btn" type="submit">💾 Sauvegarder</button>
+                <a href="{{ url_for('courses.planning') }}" class="btn" style="background: rgba(255,255,255,0.06);">↶
+                    Annuler</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

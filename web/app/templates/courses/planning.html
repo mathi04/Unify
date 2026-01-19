@@ -2,7 +2,8 @@
 {% block title %}Mon planning{% endblock %}
 {% block content %}
 
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--spacing-lg); gap: var(--spacing-md);">
+<div
+  style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--spacing-lg); gap: var(--spacing-md);">
   <div>
     <h1 style="margin-bottom: 4px;">Planning hebdomadaire</h1>
     <div style="opacity:.8; font-size: var(--font-size-sm);">
@@ -15,86 +16,201 @@
   </a>
 </div>
 
-<div class="card" style="overflow-x:auto;">
-  <div style="min-width: 1100px;">
+<div class="card">
+  <!-- No more min-width constraint! -->
 
-    {# Header: colonne vide (heures) + jours #}
-    <div style="display:grid; grid-template-columns: 80px repeat(7, minmax(150px, 1fr)); gap: var(--spacing-sm); align-items:stretch;">
-      <div></div>
-      {% for day in days %}
-        <div style="padding:10px; font-weight:800; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); text-align:center;">
-          {{ day }}
-        </div>
-      {% endfor %}
+  {# Header: colonne vide (heures) + jours (Lundi-Dimanche) #}
+  <div
+    style="display:grid; grid-template-columns: 60px repeat(7, 1fr); gap: 8px; margin-bottom: 12px; align-items:stretch;">
+    <div></div>
+    {% for day in days %} {# All 7 days: Monday to Sunday #}
+    <div
+      style="padding:8px 4px; font-weight:700; font-size: var(--font-size-sm); background: linear-gradient(135deg, rgba(200, 16, 46, 0.15), rgba(255, 77, 109, 0.05)); border: 1px solid rgba(200, 16, 46, 0.3); border-radius: var(--radius-sm); text-align:center;">
+      {{ day }}
     </div>
+    {% endfor %}
+  </div>
 
-    <div style="height: var(--spacing-sm);"></div>
+  {# Corps: colonne des heures + 7 colonnes (all days) #}
+  <div style="display:grid; grid-template-columns: 60px repeat(7, 1fr); gap: 8px; align-items:start;">
 
-    {# Corps: colonne des heures + 7 colonnes (days) #}
-    <div style="display:grid; grid-template-columns: 80px repeat(7, minmax(150px, 1fr)); gap: var(--spacing-sm); align-items:start;">
-      
-      {# Colonne heures #}
-      <div>
-        <div style="height: {{ grid.total_height }}px; position: relative;">
-          {% for h in hours %}
-            <div style="position:absolute; top: {{ (h - grid.start_hour) * grid.px_per_hour }}px; left:0; right:0; transform: translateY(-8px);
-                        font-size: var(--font-size-sm); opacity:.8;">
-              {{ "%02d:00"|format(h) }}
-            </div>
-          {% endfor %}
+    {# Colonne heures #}
+    <div>
+      <div style="height: {{ grid.total_height }}px; position: relative;">
+        {% for h in hours %}
+        <div style="position:absolute; top: {{ (h - grid.start_hour) * grid.px_per_hour }}px; left:0; right:0; transform: translateY(-8px);
+                      font-size: 11px; opacity:.7; font-weight: 600;">
+          {{ "%02d:00"|format(h) }}
         </div>
+        {% endfor %}
       </div>
-
-      {# Colonnes jours #}
-      {% for day in days %}
-        <div style="
-          height: {{ grid.total_height }}px;
-          position: relative;
-          border: 1px solid var(--glass-border);
-          border-radius: var(--radius-sm);
-          background:
-            repeating-linear-gradient(
-              to bottom,
-              rgba(255,255,255,0.06) 0px,
-              rgba(255,255,255,0.06) 1px,
-              transparent 1px,
-              transparent {{ grid.px_per_hour }}px
-            );
-          overflow: hidden;
-        ">
-
-          {# events #}
-          {% for item in schedule[day] %}
-            <a href="#"
-               data-toggle="modal"
-               data-target="#courseModal"
-               data-item-kind="{{ item.kind }}"
-               data-course-id="{{ item.id }}"
-               data-course-title="{{ item.title }}"
-               data-course-start="{{ item.start }}"
-               data-course-end="{{ item.end }}"
-               data-course-professor="{{ item.professor_full_name }}"
-               data-course-description="{{ item.description }}"
-               style="position:absolute; left: 8px; right: 8px; top: {{ item.top }}px; height: {{ item.height }}px; display:block; padding:8px; 
-                      background: var(--gradient-accent); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); 
-                      overflow:hidden; text-decoration:none; color:white;">
-
-              <div style="font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                {{ item.title }}
-              </div>
-              <div style="opacity:.85; font-size: var(--font-size-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                {{ item.start }} – {{ item.end }}
-              </div>
-            </a>
-          {% endfor %}
-
-        </div>
-      {% endfor %}
     </div>
-    
 
+    {# Colonnes jours (all 7 days) #}
+    {% for day in days %}
+    <div style="
+        height: {{ grid.total_height }}px;
+        position: relative;
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-sm);
+        background:
+          repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,0.03) 0px,
+            rgba(255,255,255,0.03) 1px,
+            transparent 1px,
+            transparent {{ grid.px_per_hour }}px
+          );
+        overflow: hidden;
+      ">
+
+      {# events #}
+      {% for item in schedule[day] %}
+      <a href="#" data-toggle="modal" data-target="#courseModal" data-item-kind="{{ item.kind }}"
+        data-course-id="{{ item.id }}" data-course-title="{{ item.title }}" data-course-start="{{ item.start }}"
+        data-course-end="{{ item.end }}" data-course-professor="{{ item.professor_full_name }}"
+        data-course-description="{{ item.description }}" style="position:absolute; left: 4px; right: 4px; top: {{ item.top }}px; height: {{ item.height }}px; display:block; padding:6px; 
+                    background: {% if item.kind == 'course' %}linear-gradient(135deg, rgba(200, 16, 46, 0.9), rgba(255, 77, 109, 0.8)){% else %}linear-gradient(135deg, rgba(100, 150, 255, 0.9), rgba(150, 100, 255, 0.8)){% endif %}; 
+                    border-radius: 6px; 
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.2); 
+                    overflow:hidden; 
+                    text-decoration:none; 
+                    color:white;
+                    transition: all var(--transition-fast);
+                    cursor: pointer;"
+        onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 16px rgba(0,0,0,0.3)';"
+        onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.2)';">
+
+        <div
+          style="font-weight:700; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom: 2px;">
+          {% if item.kind == 'course' %}📚{% else %}⭐{% endif %} {{ item.title }}
+        </div>
+        <div style="opacity:.9; font-size: 11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          {{ item.start }} – {{ item.end }}
+        </div>
+      </a>
+      {% endfor %}
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Info footer -->
+  <div
+    style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--glass-border); display: flex; gap: var(--spacing-lg); justify-content: center; flex-wrap: wrap; font-size: var(--font-size-sm); opacity: 0.7;">
+    <div>📚 <strong style="color: var(--color-accent);">Cours</strong> (du catalogue)</div>
+    <div>⭐ <strong style="color: #9b6bff;">Activités</strong> (personnelles)</div>
+    <div>💡 <em>Cliquez sur une carte pour plus d'options</em></div>
+  </div>
+
+</div>
+
+<!-- Modal pour afficher détails et actions -->
+<div id="planningModal"
+  style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);">
+  <div
+    style="position: relative; margin: 5% auto; max-width: 500px; background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: var(--spacing-xl); box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+
+    <!-- Close button -->
+    <button onclick="closePlanningModal()"
+      style="position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.1); border: none; color: white; font-size: 24px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all var(--transition-fast);">
+      ×
+    </button>
+
+    <!-- Modal content -->
+    <h2 id="modal-title" style="margin-bottom: var(--spacing-md); color: var(--color-accent);"></h2>
+
+    <div id="modal-info" style="margin-bottom: var(--spacing-lg); color: var(--color-text-secondary);"></div>
+
+    <div id="modal-actions" style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap;"></div>
   </div>
 </div>
+
+<script>
+  let currentItemKind = null;
+  let currentItemId = null;
+
+  // Attach click handlers to all planning cards
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-item-kind]').forEach(card => {
+      card.addEventListener('click', function (e) {
+        e.preventDefault();
+
+        currentItemKind = this.dataset.itemKind;
+        currentItemId = this.dataset.courseId; // Used for both courses and activities
+
+        const title = this.dataset.courseTitle;
+        const start = this.dataset.courseStart;
+        const end = this.dataset.courseEnd;
+        const professor = this.dataset.courseProfessor;
+        const description = this.dataset.courseDescription;
+
+        // Set modal title
+        document.getElementById('modal-title').textContent = title;
+
+        // Set modal info
+        let infoHtml = `<p style="margin-bottom: var(--spacing-sm);"><strong>Horaire:</strong> ${start} – ${end}</p>`;
+
+        if (currentItemKind === 'course' && professor && professor !== 'None') {
+          infoHtml += `<p style="margin-bottom: var(--spacing-sm);"><strong>Professeur:</strong> ${professor}</p>`;
+        }
+
+        if (description && description !== 'None') {
+          infoHtml += `<p style="margin-bottom: var(--spacing-sm);"><strong>Description:</strong> ${description}</p>`;
+        }
+
+        document.getElementById('modal-info').innerHTML = infoHtml;
+
+        // Set modal actions based on type
+        const actionsDiv = document.getElementById('modal-actions');
+        actionsDiv.innerHTML = '';
+
+        if (currentItemKind === 'course') {
+          // Course: show unenroll button
+          actionsDiv.innerHTML = `
+          <form method="post" action="/courses/${currentItemId}/unenroll" style="margin: 0;">
+            <button type="submit" class="btn" style="background: rgba(255,77,109,0.3); border: 1px solid var(--color-accent);">
+              🚪 Se désinscrire
+            </button>
+          </form>
+        `;
+        } else if (currentItemKind === 'activity') {
+          // Activity: show edit and delete buttons
+          actionsDiv.innerHTML = `
+          <a href="/courses/activities/${currentItemId}/edit" class="btn" style="background: rgba(100,150,255,0.3);">
+            ✏️ Modifier
+          </a>
+          <form method="post" action="/courses/activities/${currentItemId}/delete" style="margin: 0;">
+            <button type="submit" class="btn" style="background: rgba(255,77,109,0.3); border: 1px solid var(--color-accent);" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette activité ?');">
+              🗑️ Supprimer
+            </button>
+          </form>
+        `;
+        }
+
+        // Show modal
+        document.getElementById('planningModal').style.display = 'block';
+      });
+    });
+
+    // Close modal when clicking outside
+    document.getElementById('planningModal').addEventListener('click', function (e) {
+      if (e.target === this) {
+        closePlanningModal();
+      }
+    });
+  });
+
+  function closePlanningModal() {
+    document.getElementById('planningModal').style.display = 'none';
+  }
+
+  // Close on Escape key
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      closePlanningModal();
+    }
+  });
+</script>
+
 {% endblock %}
-
-

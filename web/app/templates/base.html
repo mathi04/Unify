@@ -1,54 +1,102 @@
 <!doctype html>
 <html lang="fr">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Unify - App{% endblock %}</title>
-  
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
-  
+
   <nav>
-    <div class="nav-container">
+    <div class="nav-container"
+      style="display: grid; grid-template-columns: auto 1fr auto; gap: var(--spacing-md); align-items: center;">
+      <!-- Left: Home -->
       <div>
-        <a href="{{ url_for('main.menu') }}">🏠 Accueil</a>
+        <a href="{{ url_for('main.menu') }}" style="font-weight: 600;">🏠 Accueil</a>
       </div>
-      <div>
+
+      <!-- Center: Quick Links (only for authenticated users) -->
+      {% if current_user.is_authenticated %}
+      <div style="display: flex; gap: var(--spacing-sm); justify-content: center; flex-wrap: wrap;">
+        <a href="{{ url_for('courses.catalog') }}"
+          style="padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-sm); background: rgba(255,255,255,0.05); transition: all var(--transition-fast);">
+          📚 Catalogue
+        </a>
+        {% if current_user.student %}
+        <a href="{{ url_for('courses.planning') }}"
+          style="padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-sm); background: rgba(255,255,255,0.05); transition: all var(--transition-fast);">
+          📅 Mon planning
+        </a>
+        <a href="{{ url_for('events.list_events') }}"
+          style="padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-sm); background: rgba(255,255,255,0.05); transition: all var(--transition-fast);">
+          🎉 Événements
+        </a>
+        <a href="{{ url_for('courses.my_courses') }}"
+          style="padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-sm); background: rgba(255,255,255,0.05); transition: all var(--transition-fast);">
+          📝 Mes inscriptions
+        </a>
+        {% elif current_user.professor %}
+        <a href="{{ url_for('courses.my_courses') }}"
+          style="padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-sm); background: rgba(255,255,255,0.05); transition: all var(--transition-fast);">
+          👨‍🏫 Mes cours
+        </a>
+        <a href="{{ url_for('events.list_events') }}"
+          style="padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-sm); background: rgba(255,255,255,0.05); transition: all var(--transition-fast);">
+          🎉 Événements
+        </a>
+        <a href="{{ url_for('courses.create_course') }}"
+          style="padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-sm); background: rgba(255,255,255,0.05); transition: all var(--transition-fast);">
+          ➕ Créer un cours
+        </a>
+        {% endif %}
+      </div>
+      {% else %}
+      <div></div>
+      {% endif %}
+
+      <!-- Right: User info / Auth links -->
+      <div style="display: flex; gap: var(--spacing-sm); align-items: center;">
         {% if current_user.is_authenticated %}
-          <span>Connecté: {{ current_user.username }}</span>
-          <a href="{{ url_for('auth.logout') }}">🚪 Déconnexion</a>
+        <span style="opacity: 0.8; font-size: var(--font-size-sm);">Connecté: {{ current_user.username }}</span>
+        <a href="{{ url_for('auth.logout') }}"
+          style="background: rgba(255,77,109,0.2); padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-sm);">🚪
+          Déconnexion</a>
         {% else %}
-          <a href="{{ url_for('auth.login') }}">🔐 Connexion</a>
-          <a href="{{ url_for('auth.register') }}">✨ Inscription</a>
+        <a href="{{ url_for('auth.login') }}">🔐 Connexion</a>
+        <a href="{{ url_for('auth.register') }}">✨ Inscription</a>
         {% endif %}
       </div>
     </div>
   </nav>
 
-  
+
   {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="flash-messages">
-        <ul>
-          {% for category, message in messages %}
-            <li class="{{ category }}">{{ message }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-    {% endif %}
+  {% if messages %}
+  <div class="flash-messages">
+    <ul>
+      {% for category, message in messages %}
+      <li class="{{ category }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
   {% endwith %}
 
-  
+
   <main>
     {% block content %}{% endblock %}
   </main>
 
 
 </body>
-</html>
 
+</html>

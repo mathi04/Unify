@@ -3,7 +3,8 @@
 
 {% block content %}
 
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--spacing-lg); gap: var(--spacing-md);">
+<div
+  style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--spacing-lg); gap: var(--spacing-md);">
   <div>
     <h1 style="margin-bottom: 4px;">Catalogue des cours</h1>
     <div style="opacity: 0.8; font-size: var(--font-size-sm);">
@@ -12,252 +13,291 @@
   </div>
 
   {% if current_user.is_authenticated and current_user.professor %}
-    <a href="{{ url_for('courses.create_course') }}" class="btn">Créer un cours</a>
+  <a href="{{ url_for('courses.create_course') }}" class="btn">Créer un cours</a>
   {% endif %}
 </div>
 
 {# ----------------------------
-   Barre de filtres
-   Variables attendues:
-   - faculties: list[Faculty]
-   - plans: list[StudyPlan]
-   - filters: dict { q, faculty, plan_id, sort }
-   - pagination: flask paginate obj
-   ---------------------------- #}
+Barre de filtres
+Variables attendues:
+- faculties: list[Faculty]
+- plans: list[StudyPlan]
+- filters: dict { q, faculty, plan_id, sort }
+- pagination: flask paginate obj
+---------------------------- #}
 
 <div class="card" style="margin-bottom: var(--spacing-lg);">
-  <form method="get" style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: var(--spacing-md); align-items:end;">
+  <form method="get" id="filterForm"
+    style="display:grid; grid-template-columns: 1fr; gap: var(--spacing-md); max-width: none; width: 100%; margin: 0; padding: 0; background: transparent; border: none; box-shadow: none; backdrop-filter: none;">
+
+    <!-- Search input takes full width -->
     <div>
-      <label style="display:block; margin-bottom: 6px; opacity: .8; font-size: var(--font-size-sm);">Recherche</label>
-      <input
-        type="text"
-        name="q"
-        value="{{ filters.q or '' }}"
-        placeholder="Ex: 32J0472, CS101, Data, Calculus..."
-        style="width:100%; padding:10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit;"
-      >
+      <label for="search-input"
+        style="display:block; margin-bottom: 6px; opacity: .8; font-size: var(--font-size-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+        🔍 Recherche
+      </label>
+      <input type="text" id="search-input" name="q" value="{{ filters.q or '' }}"
+        placeholder="Ex: 32J0472, CS101, Data, Calculus..." aria-label="Rechercher un cours par code ou nom"
+        style="width:100%; padding:10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit; font-size: var(--font-size-base);">
     </div>
 
-    <div>
-      <label style="display:block; margin-bottom: 6px; opacity: .8; font-size: var(--font-size-sm);">Faculté</label>
-      <select
-        name="faculty"
-        style="width:100%; padding:10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit;"
-      >
-        <option value="">Toutes</option>
-        {% for f in faculties %}
-          <option value="{{ f.external_id }}" {% if filters.faculty == f.external_id %}selected{% endif %}>
+    <!-- Filters row: responsive grid with larger minimum width -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--spacing-md);">
+      <div>
+        <label for="faculty-select"
+          style="display:block; margin-bottom: 6px; opacity: .8; font-size: var(--font-size-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+          🏫 Faculté
+        </label>
+        <select id="faculty-select" name="faculty" aria-label="Filtrer par faculté"
+          style="width:100%; padding:10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit; font-size: var(--font-size-sm); cursor: pointer; appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%278%27 viewBox=%270 0 12 8%27%3e%3cpath fill=%27%23fff%27 d=%27M6 8L0 0h12z%27/%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px;">
+          <option value="">Toutes les facultés</option>
+          {% for f in faculties %}
+          <option value="{{ f.external_id }}" {% if filters.faculty==f.external_id %}selected{% endif %}>
             {{ f.name }}
           </option>
-        {% endfor %}
-      </select>
-    </div>
+          {% endfor %}
+        </select>
+      </div>
 
-    <div>
-      <label style="display:block; margin-bottom: 6px; opacity: .8; font-size: var(--font-size-sm);">Plan d’étude</label>
-      <select
-        name="plan_id"
-        style="width:100%; padding:10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit;"
-      >
-        <option value="">Tous</option>
-        {% for p in plans %}
-          <option value="{{ p.id }}" {% if filters.plan_id == p.id %}selected{% endif %}>
+      <div>
+        <label for="plan-select"
+          style="display:block; margin-bottom: 6px; opacity: .8; font-size: var(--font-size-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+          📚 Plan d'étude
+        </label>
+        <select id="plan-select" name="plan_id" aria-label="Filtrer par plan d'étude"
+          style="width:100%; padding:10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit; font-size: var(--font-size-sm); cursor: pointer; appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%278%27 viewBox=%270 0 12 8%27%3e%3cpath fill=%27%23fff%27 d=%27M6 8L0 0h12z%27/%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px;">
+          <option value="">Tous les plans</option>
+          {% for p in plans %}
+          <option value="{{ p.id }}" {% if filters.plan_id==p.id %}selected{% endif %}>
             {{ p.label }}
           </option>
-        {% endfor %}
-      </select>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="sort-select"
+          style="display:block; margin-bottom: 6px; opacity: .8; font-size: var(--font-size-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+          🔄 Trier par
+        </label>
+        <select id="sort-select" name="sort" aria-label="Trier les résultats"
+          style="width:100%; padding:10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit; font-size: var(--font-size-sm); cursor: pointer; appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%278%27 viewBox=%270 0 12 8%27%3e%3cpath fill=%27%23fff%27 d=%27M6 8L0 0h12z%27/%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px;">
+          <option value="code" {% if (filters.sort or 'code' )=='code' %}selected{% endif %}>Code (A-Z)</option>
+          <option value="name" {% if filters.sort=='name' %}selected{% endif %}>Nom (A-Z)</option>
+          <option value="credits" {% if filters.sort=='credits' %}selected{% endif %}>Crédits</option>
+        </select>
+      </div>
     </div>
 
-    <div>
-      <label style="display:block; margin-bottom: 6px; opacity: .8; font-size: var(--font-size-sm);">Trier</label>
-      <select
-        name="sort"
-        style="width:100%; padding:10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit;"
-      >
-        <option value="code" {% if (filters.sort or 'code') == 'code' %}selected{% endif %}>Code</option>
-        <option value="name" {% if filters.sort == 'name' %}selected{% endif %}>Nom</option>
-        <option value="credits" {% if filters.sort == 'credits' %}selected{% endif %}>Crédits</option>
-      </select>
-    </div>
+    <!-- Results counter and action buttons -->
+    <div
+      style="grid-column: 1 / -1; display:flex; gap: var(--spacing-sm); align-items:center; justify-content:space-between; margin-top: var(--spacing-sm); padding-top: var(--spacing-sm); border-top: 1px solid var(--glass-border);">
 
-    <div style="grid-column: 1 / -1; display:flex; gap: var(--spacing-sm); align-items:center; justify-content:space-between; margin-top: 4px;">
-      <div style="opacity: .8; font-size: var(--font-size-sm);">
-        {% if pagination %}
-          {{ pagination.total }} cours trouvés
-        {% elif courses %}
-          {{ courses|length }} cours
+      <!-- Results counter with better visibility -->
+      <div style="display: flex; align-items: center; gap: var(--spacing-xs);">
+        <span style="font-size: var(--font-size-lg); font-weight: 700; color: var(--color-accent);">
+          {% if pagination %}
+          {{ pagination.total }}
+          {% elif courses %}
+          {{ courses|length }}
+          {% else %}
+          0
+          {% endif %}
+        </span>
+        <span style="opacity: .8; font-size: var(--font-size-sm);">
+          cours trouvé{% if pagination and pagination.total > 1 %}s{% elif courses and courses|length > 1 %}s{% endif %}
+        </span>
+
+        <!-- Active filters badges -->
+        {% if filters.q or filters.faculty or filters.plan_id or (filters.sort and filters.sort != 'code') %}
+        <span
+          style="margin-left: var(--spacing-sm); padding: 4px 8px; background: rgba(200, 16, 46, 0.2); border-radius: 999px; font-size: var(--font-size-sm); color: var(--color-accent);">
+          Filtres actifs
+        </span>
         {% endif %}
       </div>
 
+      <!-- Action buttons -->
       <div style="display:flex; gap: var(--spacing-sm);">
-        <button class="btn" type="submit">Appliquer</button>
-        <a class="btn" href="{{ url_for('courses.catalog') }}" style="background: rgba(255,255,255,0.06);">Réinitialiser</a>
+        <button class="btn" type="submit" style="position: relative; overflow: hidden;">
+          <span style="position: relative; z-index: 1;">✨ Appliquer</span>
+        </button>
+        <a class="btn" href="{{ url_for('courses.catalog') }}" title="Réinitialiser tous les filtres"
+          style="background: rgba(255,255,255,0.06); display: flex; align-items: center; gap: 6px;">
+          ↺ Réinitialiser
+        </a>
       </div>
     </div>
   </form>
 </div>
 
 {# ----------------------------
-   Résultats
-   ---------------------------- #}
+Résultats
+---------------------------- #}
 
 {% if courses %}
-  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--spacing-md);">
-    {% for course in courses %}
-      <div class="card" style="position: relative; overflow:hidden;">
-        <div style="display:flex; justify-content:space-between; gap: var(--spacing-sm); align-items:flex-start;">
-          <div>
-            <h3 style="margin-bottom: 6px;">
-              <a href="{{ url_for('courses.course_detail', course_id=course.id) }}" style="text-decoration:none;">
-                {{ course.name }}
-              </a>
-            </h3>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--spacing-md);">
+  {% for course in courses %}
+  <div class="card" style="position: relative; overflow:hidden;">
+    <div style="display:flex; justify-content:space-between; gap: var(--spacing-sm); align-items:flex-start;">
+      <div>
+        <h3 style="margin-bottom: 6px;">
+          <a href="{{ url_for('courses.course_detail', course_id=course.id) }}" style="text-decoration:none;">
+            {{ course.name }}
+          </a>
+        </h3>
 
-            <div style="display:flex; gap: 10px; flex-wrap:wrap; align-items:center;">
-              <span style="color: var(--color-accent); font-weight: 700;">
-                {{ course.code }}
-              </span>
+        <div style="display:flex; gap: 10px; flex-wrap:wrap; align-items:center;">
+          <span style="color: var(--color-accent); font-weight: 700;">
+            {{ course.code }}
+          </span>
 
-              {% if course.faculty %}
-                <span style="font-size: var(--font-size-sm); opacity:.9; padding: 4px 8px; border: 1px solid var(--glass-border); border-radius: 999px; background: rgba(255,255,255,0.03);">
-                  {{ course.faculty.name }}
-                </span>
-              {% endif %}
+          {% if course.faculty %}
+          <span
+            style="font-size: var(--font-size-sm); opacity:.9; padding: 4px 8px; border: 1px solid var(--glass-border); border-radius: 999px; background: rgba(255,255,255,0.03);">
+            {{ course.faculty.name }}
+          </span>
+          {% endif %}
 
-              {% if course.academical_year %}
-                <span style="font-size: var(--font-size-sm); opacity:.75;">
-                  {{ course.semester }} · {{ course.academical_year }}
-                </span>
-              {% elif course.semester %}
-                <span style="font-size: var(--font-size-sm); opacity:.75;">
-                  {{ course.semester }}
-                </span>
-              {% endif %}
-            </div>
-          </div>
-
-          <div style="text-align:right; min-width: 90px;">
-            <div style="font-weight: 700;">
-              {{ course.credits }} cr.
-            </div>
-            {% if course.enrolled_count is not none %}
-              <div style="font-size: var(--font-size-sm); opacity:.8;">
-                {{ course.enrolled_count }} inscrits
-              </div>
-            {% endif %}
-          </div>
+          {% if course.academical_year %}
+          <span style="font-size: var(--font-size-sm); opacity:.75;">
+            {{ course.semester }} · {{ course.academical_year }}
+          </span>
+          {% elif course.semester %}
+          <span style="font-size: var(--font-size-sm); opacity:.75;">
+            {{ course.semester }}
+          </span>
+          {% endif %}
         </div>
-
-        {% if course.description %}
-          <p style="margin-top: var(--spacing-sm); opacity: .92;">
-            {{ course.description[:120] }}{% if course.description|length > 120 %}...{% endif %}
-          </p>
-        {% endif %}
-
-        {# Bloc feedback/difficulté (comme ton style) #}
-        {% if course.average_hours %}
-          <div style="background: rgba(255, 255, 255, 0.03); padding: var(--spacing-xs); border-radius: var(--radius-sm); margin: var(--spacing-sm) 0;">
-            <div style="font-weight:600;">
-              {% set difficulty = course.difficulty_rating %}
-              {% if difficulty == 1 %}Très facile
-              {% elif difficulty == 2 %}Facile
-              {% elif difficulty == 3 %}Moyen
-              {% elif difficulty == 4 %}Difficile
-              {% elif difficulty == 5 %}Très difficile
-              {% else %}Difficulté inconnue
-              {% endif %}
-            </div>
-            <div style="font-size: var(--font-size-sm); opacity:.9;">
-              ~{{ course.average_hours }}h/semaine
-              {% if course.average_grade %} · Note moy: {{ course.average_grade }}/20{% endif %}
-              · {{ course.feedback_count }} avis
-            </div>
-          </div>
-        {% endif %}
-
-        {# Plans d'étude: affiche les 2-3 premiers liens + credits dans le plan #}
-        {% if course.study_plans %}
-          <div style="margin-top: var(--spacing-sm); display:flex; flex-wrap:wrap; gap: 8px;">
-            {% for link in course.study_plans[:3] %}
-              <span style="font-size: var(--font-size-sm); padding: 5px 8px; border-radius: 999px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03);">
-                {{ link.study_plan.label }}
-                {% if link.plan_credits %}
-                  · {{ link.plan_credits }} cr.
-                {% endif %}
-              </span>
-            {% endfor %}
-            {% if course.study_plans|length > 3 %}
-              <span style="font-size: var(--font-size-sm); opacity:.75; padding: 5px 8px;">
-                +{{ course.study_plans|length - 3 }} autres
-              </span>
-            {% endif %}
-          </div>
-        {% endif %}
-
-        <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-sm); border-top: 1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center; gap: var(--spacing-sm);">
-          <div style="font-size: var(--font-size-sm); opacity:.9;">
-            {% if course.professor %}
-              {{ course.professor.full_name }}
-              {% if course.professor.department %}
-                · {{ course.professor.department }}
-              {% endif %}
-            {% endif %}
-          </div>
-
-          <div style="display:flex; gap: var(--spacing-sm); align-items:center;">
-            {% if current_user.is_authenticated and current_user.student %}
-              {% if enrolled_course_ids is defined and course.id in enrolled_course_ids %}
-                <span style="color:#4ade80; font-weight:700;">Inscrit</span>
-              {% else %}
-                <a href="{{ url_for('courses.course_detail', course_id=course.id) }}" class="btn">Voir</a>
-              {% endif %}
-            {% else %}
-              <a href="{{ url_for('courses.course_detail', course_id=course.id) }}" class="btn">Voir</a>
-            {% endif %}
-          </div>
-        </div>
-
       </div>
-    {% endfor %}
-  </div>
 
-  {# ----------------------------
-     Pagination
-     ---------------------------- #}
-  {% if pagination and pagination.pages > 1 %}
-    <div class="card" style="margin-top: var(--spacing-lg); display:flex; justify-content:space-between; align-items:center;">
-      <div style="opacity:.85; font-size: var(--font-size-sm);">
-        Page {{ pagination.page }} / {{ pagination.pages }}
+      <div style="text-align:right; min-width: 90px;">
+        <div style="font-weight: 700;">
+          {{ course.credits }} cr.
+        </div>
+        {% if course.enrolled_count is not none %}
+        <div style="font-size: var(--font-size-sm); opacity:.8;">
+          {{ course.enrolled_count }} inscrits
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if course.description %}
+    <p style="margin-top: var(--spacing-sm); opacity: .92;">
+      {{ course.description[:120] }}{% if course.description|length > 120 %}...{% endif %}
+    </p>
+    {% endif %}
+
+    {# Bloc feedback/difficulté (comme ton style) #}
+    {% if course.average_hours %}
+    <div
+      style="background: rgba(255, 255, 255, 0.03); padding: var(--spacing-xs); border-radius: var(--radius-sm); margin: var(--spacing-sm) 0;">
+      <div style="font-weight:600;">
+        {% set difficulty = course.difficulty_rating %}
+        {% if difficulty == 1 %}Très facile
+        {% elif difficulty == 2 %}Facile
+        {% elif difficulty == 3 %}Moyen
+        {% elif difficulty == 4 %}Difficile
+        {% elif difficulty == 5 %}Très difficile
+        {% else %}Difficulté inconnue
+        {% endif %}
+      </div>
+      <div style="font-size: var(--font-size-sm); opacity:.9;">
+        ~{{ course.average_hours }}h/semaine
+        {% if course.average_grade %} · Note moy: {{ course.average_grade }}/20{% endif %}
+        · {{ course.feedback_count }} avis
+      </div>
+    </div>
+    {% endif %}
+
+    {# Plans d'étude: affiche les 2-3 premiers liens + credits dans le plan #}
+    {% if course.study_plans %}
+    <div style="margin-top: var(--spacing-sm); display:flex; flex-wrap:wrap; gap: 8px;">
+      {% for link in course.study_plans[:3] %}
+      <span
+        style="font-size: var(--font-size-sm); padding: 5px 8px; border-radius: 999px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03);">
+        {{ link.study_plan.label }}
+        {% if link.plan_credits %}
+        · {{ link.plan_credits }} cr.
+        {% endif %}
+      </span>
+      {% endfor %}
+      {% if course.study_plans|length > 3 %}
+      <span style="font-size: var(--font-size-sm); opacity:.75; padding: 5px 8px;">
+        +{{ course.study_plans|length - 3 }} autres
+      </span>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div
+      style="margin-top: var(--spacing-md); padding-top: var(--spacing-sm); border-top: 1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center; gap: var(--spacing-sm);">
+      <div style="font-size: var(--font-size-sm); opacity:.9;">
+        {% if course.professor %}
+        {{ course.professor.full_name }}
+        {% if course.professor.department %}
+        · {{ course.professor.department }}
+        {% endif %}
+        {% endif %}
       </div>
 
       <div style="display:flex; gap: var(--spacing-sm); align-items:center;">
-        {% if pagination.has_prev %}
-          <a class="btn" href="{{ url_for('courses.catalog', page=pagination.prev_num, q=filters.q, faculty=filters.faculty, plan_id=filters.plan_id, sort=filters.sort) }}">
-            ← Précédent
-          </a>
+        {% if current_user.is_authenticated and current_user.student %}
+        {% if enrolled_course_ids is defined and course.id in enrolled_course_ids %}
+        <span style="color:#4ade80; font-weight:700;">Inscrit</span>
         {% else %}
-          <span style="opacity:.4;">← Précédent</span>
+        <a href="{{ url_for('courses.course_detail', course_id=course.id) }}" class="btn">Voir</a>
         {% endif %}
-
-        {% if pagination.has_next %}
-          <a class="btn" href="{{ url_for('courses.catalog', page=pagination.next_num, q=filters.q, faculty=filters.faculty, plan_id=filters.plan_id, sort=filters.sort) }}">
-            Suivant →
-          </a>
         {% else %}
-          <span style="opacity:.4;">Suivant →</span>
+        <a href="{{ url_for('courses.course_detail', course_id=course.id) }}" class="btn">Voir</a>
         {% endif %}
       </div>
     </div>
-  {% endif %}
+
+  </div>
+  {% endfor %}
+</div>
+
+{# ----------------------------
+Pagination
+---------------------------- #}
+{% if pagination and pagination.pages > 1 %}
+<div class="card"
+  style="margin-top: var(--spacing-lg); display:flex; justify-content:space-between; align-items:center;">
+  <div style="opacity:.85; font-size: var(--font-size-sm);">
+    Page {{ pagination.page }} / {{ pagination.pages }}
+  </div>
+
+  <div style="display:flex; gap: var(--spacing-sm); align-items:center;">
+    {% if pagination.has_prev %}
+    <a class="btn"
+      href="{{ url_for('courses.catalog', page=pagination.prev_num, q=filters.q, faculty=filters.faculty, plan_id=filters.plan_id, sort=filters.sort) }}">
+      ← Précédent
+    </a>
+    {% else %}
+    <span style="opacity:.4;">← Précédent</span>
+    {% endif %}
+
+    {% if pagination.has_next %}
+    <a class="btn"
+      href="{{ url_for('courses.catalog', page=pagination.next_num, q=filters.q, faculty=filters.faculty, plan_id=filters.plan_id, sort=filters.sort) }}">
+      Suivant →
+    </a>
+    {% else %}
+    <span style="opacity:.4;">Suivant →</span>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 
 {% else %}
-  <div class="card">
-    <p style="margin:0; opacity:.85;">Aucun cours ne correspond à ta recherche.</p>
-    <div style="margin-top: var(--spacing-sm);">
-      <a class="btn" href="{{ url_for('courses.catalog') }}">Réinitialiser les filtres</a>
-    </div>
+<div class="card">
+  <p style="margin:0; opacity:.85;">Aucun cours ne correspond à ta recherche.</p>
+  <div style="margin-top: var(--spacing-sm);">
+    <a class="btn" href="{{ url_for('courses.catalog') }}">Réinitialiser les filtres</a>
   </div>
+</div>
 {% endif %}
 
 {% endblock %}
-

@@ -18,12 +18,8 @@
             enrollment.course.code }}</p>
 
         <div style="margin: var(--spacing-sm) 0;">
-            <span style="padding: 0.25rem 0.5rem; background: 
-            {% if enrollment.status == 'enrolled' %}rgba(74, 222, 128, 0.2); color: #4ade80;
-            {% elif enrollment.status == 'completed' %}rgba(96, 165, 250, 0.2); color: #60a5fa;
-            {% elif enrollment.status == 'dropped' %}rgba(248, 113, 113, 0.2); color: #f87171;
-            {% endif %}
-            border-radius: var(--radius-sm); font-size: var(--font-size-sm); font-weight: 600;">
+            <span
+                style="padding: 0.25rem 0.5rem; {% if enrollment.status == 'enrolled' %}background: rgba(74, 222, 128, 0.2); color: #4ade80;{% elif enrollment.status == 'completed' %}background: rgba(96, 165, 250, 0.2); color: #60a5fa;{% elif enrollment.status == 'dropped' %}background: rgba(248, 113, 113, 0.2); color: #f87171;{% endif %} border-radius: var(--radius-sm); font-size: var(--font-size-sm); font-weight: 600;">
                 {% if enrollment.status == 'enrolled' %}📝 En cours
                 {% elif enrollment.status == 'completed' %}✅ Complété
                 {% elif enrollment.status == 'dropped' %}❌ Abandonné
@@ -69,7 +65,7 @@
 {% else %}
 <div class="card">
     <p>Vous n'êtes inscrit à aucun cours pour le moment.</p>
-    <a href="{{ url_for('courses.list_courses') }}" class="btn">📚 Parcourir les cours</a>
+    <a href="{{ url_for('courses.catalog') }}" class="btn">📚 Parcourir les cours</a>
 </div>
 {% endif %}
 {% endblock %}

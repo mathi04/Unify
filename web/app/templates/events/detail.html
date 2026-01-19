@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}{{ event.title }}{% endblock %}
+{% block content %}
+
+<!-- Event header -->
+<div style="margin-bottom: var(--spacing-lg);">
+    <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-sm);">
+        <span style="font-size: 3rem;">{{ event.category_emoji }}</span>
+        <div style="flex: 1;">
+            <h1 style="margin-bottom: 4px;">{{ event.title }}</h1>
+            <div style="opacity:.7; font-size: var(--font-size-sm);">
+                Créé par {{ event.creator.username }}
+                {% if event.is_full %}
+                <span
+                    style="margin-left: 8px; padding: 4px 8px; background: rgba(255,77,109,0.3); border-radius: var(--radius-sm); font-size: var(--font-size-xs); font-weight: 700;">COMPLET</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main content -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--spacing-lg);">
+
+    <!-- Left column: Details -->
+    <div>
+        <!-- Description -->
+        {% if event.description %}
+        <div class="card" style="margin-bottom: var(--spacing-lg);">
+            <h3 style="margin-bottom: var(--spacing-md);">Description</h3>
+            <p style="white-space: pre-wrap; line-height: 1.6;">{{ event.description }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Participants list -->
+        <div class="card">
+            <h3 style="margin-bottom: var(--spacing-md);">
+                Participants ({{ event.participant_count }}{% if event.max_participants %}/{{ event.max_participants
+                }}{% endif %})
+            </h3>
+
+            {% if event.participants %}
+            <div style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+                {% for participant in event.participants %}
+                <div
+                    style="display: flex; align-items: center; gap: var(--spacing-sm); padding: 8px; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm);">
+                    <span style="font-size: 1.5rem;">👤</span>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600;">{{ participant.user.username }}</div>
+                        <div style="font-size: var(--font-size-xs); opacity: 0.7;">
+                            Rejoint {{ participant.joined_at.strftime('%d/%m/%Y à %H:%M') }}
+                        </div>
+                    </div>
+                    {% if participant.user_id == event.creator_id %}
+                    <span
+                        style="padding: 4px 8px; background: rgba(200,16,46,0.3); border-radius: var(--radius-sm); font-size: var(--font-size-xs); font-weight: 700;">CRÉATEUR</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="opacity: 0.6; text-align: center; padding: var(--spacing-lg);">
+                Soyez le premier à rejoindre cet événement !
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right column: Info & Actions -->
+    <div>
+        <!-- Event info -->
+        <div class="card" style="margin-bottom: var(--spacing-lg);">
+            <h3 style="margin-bottom: var(--spacing-md);">Informations</h3>
+
+            <div style="display: flex; flex-direction: column; gap: var(--spacing-md);">
+                <div>
+                    <div style="font-size: var(--font-size-xs); opacity: 0.7; margin-bottom: 4px;">📅 Jour</div>
+                    <div style="font-weight: 600;">{{ event.day_of_week }}</div>
+                </div>
+
+                <div>
+                    <div style="font-size: var(--font-size-xs); opacity: 0.7; margin-bottom: 4px;">🕐 Horaire</div>
+                    <div style="font-weight: 600;">{{ event.start_time }} - {{ event.end_time }}</div>
+                </div>
+
+                {% if event.location %}
+                <div>
+                    <div style="font-size: var(--font-size-xs); opacity: 0.7; margin-bottom: 4px;">📍 Lieu</div>
+                    <div style="font-weight: 600;">{{ event.location }}</div>
+                </div>
+                {% endif %}
+
+                <div>
+                    <div style="font-size: var(--font-size-xs); opacity: 0.7; margin-bottom: 4px;">👥 Participants</div>
+                    <div style="font-weight: 600;">
+                        {{ event.participant_count }}{% if event.max_participants %}/{{ event.max_participants }}{% else
+                        %} (illimité){% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conflict warning -->
+        {% if current_user.is_authenticated and not is_participant and conflicts %}
+        <div class="card"
+            style="margin-bottom: var(--spacing-lg); background: rgba(255,150,0,0.1); border: 1px solid rgba(255,150,0,0.3);">
+            <h4 style="color: #ff9500; margin-bottom: var(--spacing-sm);">⚠️ Conflit d'horaire détecté</h4>
+            <p style="font-size: var(--font-size-sm); margin-bottom: var(--spacing-sm);">Vous avez déjà:</p>
+            <ul style="font-size: var(--font-size-sm); padding-left: 20px; margin: 0;">
+                {% for conflict in conflicts %}
+                <li style="margin-bottom: 4px;">
+                    <strong>{{ conflict.type }}:</strong> {{ conflict.title }} ({{ conflict.time }})
+                </li>
+                {% endfor %}
+            </ul>
+            <p style="font-size: var(--font-size-xs); opacity: 0.8; margin-top: var(--spacing-sm); margin-bottom: 0;">
+                Vous pouvez quand même rejoindre cet événement si vous le souhaitez.
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        {% if current_user.is_authenticated %}
+        <div class="card">
+            {% if is_creator %}
+            <!-- Creator actions -->
+            <p style="font-size: var(--font-size-sm); opacity: 0.7; margin-bottom: var(--spacing-md);">
+                Vous êtes le créateur de cet événement
+            </p>
+            <form method="post" action="{{ url_for('events.delete_event', event_id=event.id) }}"
+                onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet événement ?');" style="margin: 0;">
+                <button type="submit" class="btn"
+                    style="width: 100%; background: rgba(255,77,109,0.3); border: 1px solid var(--color-accent);">
+                    🗑️ Supprimer l'événement
+                </button>
+            </form>
+            {% elif is_participant %}
+            <!-- Participant actions -->
+            <form method="post" action="{{ url_for('events.leave_event', event_id=event.id) }}" style="margin: 0;">
+                <button type="submit" class="btn" style="width: 100%; background: rgba(255,150,0,0.3);">
+                    👋 Quitter l'événement
+                </button>
+            </form>
+            {% elif event.is_full %}
+            <!-- Full event -->
+            <button class="btn" disabled style="width: 100%; opacity: 0.5; cursor: not-allowed;">
+                Événement complet
+            </button>
+            {% else %}
+            <!-- Join action -->
+            <form method="post" action="{{ url_for('events.join_event', event_id=event.id) }}" style="margin: 0;">
+                <button type="submit" class="btn" style="width: 100%;">
+                    ✅ Rejoindre l'événement
+                </button>
+            </form>
+            {% if conflicts %}
+            <p style="font-size: var(--font-size-xs); opacity: 0.7; margin-top: var(--spacing-sm); text-align: center;">
+                Malgré le conflit d'horaire ci-dessus
+            </p>
+            {% endif %}
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="card">
+            <p style="text-align: center; opacity: 0.7;">
+                <a href="{{ url_for('auth.login') }}" style="color: var(--color-accent);">Connectez-vous</a> pour
+                rejoindre cet événement
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

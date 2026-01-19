@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}Créer un événement{% endblock %}
+{% block content %}
+
+<div style="margin-bottom: var(--spacing-lg);">
+    <h1 style="margin-bottom: 4px;">Créer un événement</h1>
+    <div style="opacity:.8; font-size: var(--font-size-sm);">
+        Organisez une activité et invitez d'autres utilisateurs
+    </div>
+</div>
+
+<div class="card">
+    <form method="post" action="{{ url_for('events.create_event') }}">
+
+        <!-- Title -->
+        <div style="margin-bottom: var(--spacing-md);">
+            <label for="title" style="display: block; margin-bottom: 6px; font-weight: 600;">
+                Titre <span style="color: var(--color-accent);">*</span>
+            </label>
+            <input type="text" id="title" name="title" required placeholder="Ex: Révision Maths - Chapitre 3"
+                style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit;">
+        </div>
+
+        <!-- Description -->
+        <div style="margin-bottom: var(--spacing-md);">
+            <label for="description" style="display: block; margin-bottom: 6px; font-weight: 600;">Description</label>
+            <textarea id="description" name="description" rows="4" placeholder="Détails de l'événement..."
+                style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit; resize: vertical;"></textarea>
+        </div>
+
+        <!-- Category -->
+        <div style="margin-bottom: var(--spacing-md);">
+            <label for="category" style="display: block; margin-bottom: 6px; font-weight: 600;">
+                Catégorie <span style="color: var(--color-accent);">*</span>
+            </label>
+            <select id="category" name="category" required
+                style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit;">
+                {% for cat in categories %}
+                <option value="{{ cat.value }}">{{ cat.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Day and Time -->
+        <div
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+
+            <div>
+                <label for="day_of_week" style="display: block; margin-bottom: 6px; font-weight: 600;">
+                    Jour <span style="color: var(--color-accent);">*</span>
+                </label>
+                <select id="day_of_week" name="day_of_week" required
+                    style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit;">
+                    <option value="Lundi">Lundi</option>
+                    <option value="Mardi">Mardi</option>
+                    <option value="Mercredi">Mercredi</option>
+                    <option value="Jeudi">Jeudi</option>
+                    <option value="Vendredi">Vendredi</option>
+                    <option value="Samedi">Samedi</option>
+                    <option value="Dimanche">Dimanche</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="start_time" style="display: block; margin-bottom: 6px; font-weight: 600;">
+                    Heure début <span style="color: var(--color-accent);">*</span>
+                </label>
+                <input type="time" id="start_time" name="start_time" required
+                    style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit;">
+            </div>
+
+            <div>
+                <label for="end_time" style="display: block; margin-bottom: 6px; font-weight: 600;">
+                    Heure fin <span style="color: var(--color-accent);">*</span>
+                </label>
+                <input type="time" id="end_time" name="end_time" required
+                    style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit;">
+            </div>
+        </div>
+
+        <!-- Location -->
+        <div style="margin-bottom: var(--spacing-md);">
+            <label for="location" style="display: block; margin-bottom: 6px; font-weight: 600;">Lieu</label>
+            <input type="text" id="location" name="location" placeholder="Ex: Bibliothèque, Salle B203, Parc central..."
+                style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit;">
+        </div>
+
+        <!-- Max participants -->
+        <div style="margin-bottom: var(--spacing-lg);">
+            <label for="max_participants" style="display: block; margin-bottom: 6px; font-weight: 600;">
+                Nombre maximum de participants
+            </label>
+            <input type="number" id="max_participants" name="max_participants" min="2" max="100"
+                placeholder="Laisser vide pour illimité"
+                style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: inherit;">
+            <div style="margin-top: 4px; font-size: var(--font-size-xs); opacity: 0.7;">
+                Laissez vide pour un nombre illimité de participants
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div
+            style="display: flex; gap: var(--spacing-md); justify-content: flex-end; padding-top: var(--spacing-md); border-top: 1px solid var(--glass-border);">
+            <a href="{{ url_for('events.list_events') }}" class="btn" style="background: rgba(100,100,100,0.3);">
+                Annuler
+            </a>
+            <button type="submit" class="btn">
+                Créer l'événement
+            </button>
+        </div>
+
+    </form>
+</div>
+
+{% endblock %}

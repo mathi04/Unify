@@ -220,3 +220,81 @@ class Activity(db.Model):
 
     def __repr__(self):
         return f"<Activity {self.title} {self.day_of_week} {self.start_time}-{self.end_time}>"
+
+
+class Event(db.Model):
+    """Social event model - users can create and join events"""
+    __tablename__ = 'event'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Basic info
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    category = db.Column(db.String(50), default='other')  # sport, study, social, gaming, food, creative, other
+    
+    # Schedule
+    day_of_week = db.Column(db.String(20), nullable=False)  # e.g., "Lundi"
+    start_time = db.Column(db.String(10), nullable=False)  # e.g., "18:00"
+    end_time = db.Column(db.String(10), nullable=False)  # e.g., "20:00"
+    event_date = db.Column(db.Date, nullable=True)  # For one-time events
+    
+    # Details
+    location = db.Column(db.String(200))
+    max_participants = db.Column(db.Integer)  # null = unlimited
+    is_public = db.Column(db.Boolean, default=True)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    creator = db.relationship('User', backref='created_events')
+    participants = db.relationship('EventParticipant', back_populates='event', cascade='all, delete-orphan')
+    
+    @property
+    def participant_count(self):
+        return len(self.participants)
+    
+    @property
+    def is_full(self):
+        if self.max_participants is None:
+            return False
+        return self.participant_count >= self.max_participants
+    
+    @property  
+    def category_emoji(self):
+        emojis = {
+            'study': '📚',
+            'sport': '⚽',
+            'social': '🎉',
+            'gaming': '🎮',
+            'food': '🍕',
+            'creative': '🎨',
+            'other': '💼'
+        }
+        return emojis.get(self.category, '💼')
+    
+    def __repr__(self):
+        return f"<Event {self.title} {self.day_of_week} {self.start_time}-{self.end_time}>"
+
+
+class EventParticipant(db.Model):
+    """Event participation - many-to-many relationship between User and Event"""
+    __tablename__ = 'event_participant'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    event = db.relationship('Event', back_populates='participants')
+    user = db.relationship('User', backref='event_participations')
+    
+    # Ensure a user can only join an event once
+    __table_args__ = (
+        db.UniqueConstraint('event_id', 'user_id', name='unique_event_user'),
+    )
+    
+    def __repr__(self):
+        return f"<EventParticipant User:{self.user_id} Event:{self.event_id}>"

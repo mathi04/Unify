@@ -334,6 +334,19 @@ textarea::placeholder {
   color: var(--color-text-muted);
 }
 
+/* Dropdown option styling */
+select option {
+  background: rgba(20, 20, 30, 0.95);
+  color: var(--color-text-primary);
+  padding: var(--spacing-sm);
+}
+
+select option:hover,
+select option:checked {
+  background: rgba(200, 16, 46, 0.3);
+  color: var(--color-text-primary);
+}
+
 /* ============================================
    BUTTONS
    ============================================ */
